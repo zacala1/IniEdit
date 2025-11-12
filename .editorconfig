@@ -1,0 +1,6 @@
+root = true
+
+[*.cs]
+# Suppress NUnit analyzer warnings for Classic Assert usage
+dotnet_diagnostic.NUnit2005.severity = none
+dotnet_diagnostic.NUnit2031.severity = none
