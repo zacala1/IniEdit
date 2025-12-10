@@ -353,7 +353,7 @@ namespace IniEdit.Tests
         [Test]
         public void HasProperty_EmptyPropertyName_ThrowsException()
         {
-            Assert.Throws<ArgumentNullException>(() => _section.HasProperty(string.Empty));
+            Assert.Throws<ArgumentException>(() => _section.HasProperty(string.Empty));
         }
 
         #endregion

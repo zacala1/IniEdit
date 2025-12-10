@@ -267,11 +267,11 @@ namespace IniEdit
         /// </summary>
         /// <param name="key">The key of the property to locate (case-insensitive).</param>
         /// <returns>True if the property exists; otherwise, false.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when key is null or empty.</exception>
+        /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
         public bool HasProperty(string key)
         {
             if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
+                throw new ArgumentException("Property key cannot be null or empty", nameof(key));
 
             return _propertyLookup.ContainsKey(key);
         }
@@ -412,12 +412,18 @@ namespace IniEdit
             PreComments.Clear();
             PreComments.AddRange(section.PreComments);
             Comment = section.Comment;
+
+            // Build index map for O(1) position lookup during merge (O(n+m) instead of O(n*m))
+            var indexMap = new Dictionary<string, int>(_properties.Count, StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < _properties.Count; i++)
+            {
+                indexMap[_properties[i].Name] = i;
+            }
+
             foreach (var property in section)
             {
-                // Use O(1) dictionary lookup instead of O(n) FindIndex
-                if (_propertyLookup.TryGetValue(property.Name, out var existingProperty))
+                if (indexMap.TryGetValue(property.Name, out var index))
                 {
-                    var index = _properties.IndexOf(existingProperty);
                     _properties[index] = property;
                     _propertyLookup[property.Name] = property;
                 }

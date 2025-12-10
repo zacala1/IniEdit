@@ -59,6 +59,30 @@ namespace IniEdit
         public bool CollectParsingErrors { get; set; }
 
         /// <summary>
+        /// Maximum number of sections allowed. 0 means unlimited (default).
+        /// Set this to prevent memory exhaustion from malicious INI files.
+        /// </summary>
+        public int MaxSections { get; set; }
+
+        /// <summary>
+        /// Maximum number of properties per section. 0 means unlimited (default).
+        /// Set this to prevent memory exhaustion from malicious INI files.
+        /// </summary>
+        public int MaxPropertiesPerSection { get; set; }
+
+        /// <summary>
+        /// Maximum length of a property value in characters. 0 means unlimited (default).
+        /// Set this to prevent memory exhaustion from malicious INI files.
+        /// </summary>
+        public int MaxValueLength { get; set; }
+
+        /// <summary>
+        /// Maximum length of a single line in characters. 0 means unlimited (default).
+        /// Set this to prevent memory exhaustion from malicious INI files with very long lines.
+        /// </summary>
+        public int MaxLineLength { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="IniConfigOption"/> class with default values.
         /// </summary>
         public IniConfigOption()
@@ -68,6 +92,10 @@ namespace IniEdit
             DuplicateKeyPolicy = DuplicateKeyPolicyType.FirstWin;
             DuplicateSectionPolicy = DuplicateSectionPolicyType.FirstWin;
             CollectParsingErrors = false;
+            MaxSections = 0;
+            MaxPropertiesPerSection = 0;
+            MaxValueLength = 0;
+            MaxLineLength = 0;
         }
     }
 }

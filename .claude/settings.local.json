@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nRefactor: 코드 리뷰 기반 개선 및 보안 강화\n\n주요 변경사항:\n- Save 메서드 부작용 수정 (IsQuoted 변경 방지)\n- LoadWithOptionsAsync를 진정한 async I/O로 변환\n- ArgumentException 타입 일관성 개선\n- Document.DefaultSectionName 상수 추가\n- Snapshot을 Stack에서 LinkedList로 변경 (O(1) trim)\n- 파라미터 이름 일관성 (registry → document)\n\n보안 강화:\n- MaxSections, MaxPropertiesPerSection, MaxValueLength 옵션 추가\n- MaxLineLength 옵션 추가 (메모리 소진 공격 방지)\n- ReDoS 방지를 위한 Regex 타임아웃 추가\n- Save 메서드 document null 체크 추가\n- Comment.Prefix 검증 추가\n\n성능 최적화:\n- MergeFromOnLastWin O(n*m) → O(n+m)\n\n문서화:\n- README 자연스러운 한국어로 재작성\n- docs/ 폴더 구조화 (configuration.md, advanced.md, api-reference.md)\n- FEATURES.md 삭제\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")"
+    ]
+  }
+}

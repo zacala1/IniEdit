@@ -101,21 +101,32 @@ namespace IniEdit
                 throw new ArgumentException("Stream must be readable", nameof(stream));
             if (option == null) option = new IniConfigOption();
 
-            var registry = new Document(option);
+            var doc = new Document(option);
             using var reader = new StreamReader(stream, encoding, true, BufferSize, leaveOpen: true);
             {
 
-                Section currentSection = registry.DefaultSection;
+                Section currentSection = doc.DefaultSection;
                 var pendingComments = new List<Comment>();
                 string? line;
                 int lineNumber = 0;
                 while ((line = reader.ReadLine()) != null)
                 {
                     lineNumber++;
+
+                    // Check line length limit
+                    if (option.MaxLineLength > 0 && line.Length > option.MaxLineLength)
+                    {
+                        var error = new ParsingErrorEventArgs(lineNumber, line.Substring(0, Math.Min(100, line.Length)) + "...", $"Line exceeds maximum length ({option.MaxLineLength} characters)");
+                        ParsingError?.Invoke(null, error);
+                        if (option.CollectParsingErrors)
+                            doc.AddParsingError(error);
+                        continue;
+                    }
+
                     var span = line.AsSpan().Trim();
                     if (span.IsEmpty) continue;
 
-                    var commentSign = span.IndexOfAny(registry.CommentPrefixChars);
+                    var commentSign = span.IndexOfAny(doc.CommentPrefixChars);
                     if (commentSign == 0)
                     {
                         var commentString = span.Slice(1).ToString();
@@ -131,7 +142,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Missing closing bracket in section declaration");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -142,7 +153,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Section name cannot be empty");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -154,7 +165,7 @@ namespace IniEdit
                         {
                             var error = new ParsingErrorEventArgs(lineNumber, line, $"Invalid section name: {ex.Message}");
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -165,14 +176,24 @@ namespace IniEdit
                         }
 
                         var afterSection = span.Slice(closeBracket + 1).TrimStart();
-                        commentSign = afterSection.IndexOfAny(registry.CommentPrefixChars);
+                        commentSign = afterSection.IndexOfAny(doc.CommentPrefixChars);
                         if (commentSign == 0)
                         {
                             var commentString = afterSection.Slice(1).ToString();
                             currentSection.Comment = new Comment(commentString);
                         }
 
-                        registry.AddSectionInternal(currentSection);
+                        // Check section limit
+                        if (option.MaxSections > 0 && doc.SectionCount >= option.MaxSections)
+                        {
+                            var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum section limit ({option.MaxSections}) exceeded");
+                            ParsingError?.Invoke(null, error);
+                            if (option.CollectParsingErrors)
+                                doc.AddParsingError(error);
+                            continue;
+                        }
+
+                        doc.AddSectionInternal(currentSection);
                         continue;
                     }
 
@@ -182,7 +203,7 @@ namespace IniEdit
                         var error = new ParsingErrorEventArgs(lineNumber, line, "Missing equals sign in key-value pair");
                         ParsingError?.Invoke(null, error);
                         if (option.CollectParsingErrors)
-                            registry.AddParsingError(error);
+                            doc.AddParsingError(error);
                         continue;
                     }
 
@@ -192,7 +213,7 @@ namespace IniEdit
                         var error = new ParsingErrorEventArgs(lineNumber, line, "Key is empty");
                         ParsingError?.Invoke(null, error);
                         if (option.CollectParsingErrors)
-                            registry.AddParsingError(error);
+                            doc.AddParsingError(error);
                         continue;
                     }
 
@@ -256,7 +277,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid escape sequence: incomplete escape marker");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
                         if (!isTerminated)
@@ -264,7 +285,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Unterminated quote: missing closing quotation mark");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -272,7 +293,7 @@ namespace IniEdit
 
                         // Check for inline comment
                         remains = remains.TrimStart();
-                        commentSign = remains.IndexOfAny(registry.CommentPrefixChars);
+                        commentSign = remains.IndexOfAny(doc.CommentPrefixChars);
                         if (commentSign == 0)
                         {
                             remains = remains.Slice(1);
@@ -284,7 +305,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid content after closing quote");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -294,14 +315,14 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid quote format");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
                     }
                     else
                     {
                         // Check for inline comment
-                        commentSign = valueStart.IndexOfAny(registry.CommentPrefixChars);
+                        commentSign = valueStart.IndexOfAny(doc.CommentPrefixChars);
                         if (commentSign >= 0)
                         {
                             value = valueStart.Slice(0, commentSign).TrimEnd().ToString();
@@ -312,6 +333,26 @@ namespace IniEdit
                             value = valueStart.TrimEnd().ToString();
                             comment = string.Empty;
                         }
+                    }
+
+                    // Check value length limit
+                    if (option.MaxValueLength > 0 && value.Length > option.MaxValueLength)
+                    {
+                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Value length ({value.Length}) exceeds maximum ({option.MaxValueLength})");
+                        ParsingError?.Invoke(null, error);
+                        if (option.CollectParsingErrors)
+                            doc.AddParsingError(error);
+                        continue;
+                    }
+
+                    // Check property count limit
+                    if (option.MaxPropertiesPerSection > 0 && currentSection.PropertyCount >= option.MaxPropertiesPerSection)
+                    {
+                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum properties per section ({option.MaxPropertiesPerSection}) exceeded");
+                        ParsingError?.Invoke(null, error);
+                        if (option.CollectParsingErrors)
+                            doc.AddParsingError(error);
+                        continue;
                     }
 
                     var property = new Property(keyName, value);
@@ -333,9 +374,9 @@ namespace IniEdit
             }
 
             // Remove null values
-            registry.GetInternalSections().RemoveAll(x => x == null);
-            registry.RebuildSectionLookup(); // Rebuild dictionary after RemoveAll
-            foreach (Section section in registry)
+            doc.GetInternalSections().RemoveAll(x => x == null);
+            doc.RebuildSectionLookup(); // Rebuild dictionary after RemoveAll
+            foreach (Section section in doc)
             {
                 section.GetInternalProperties().RemoveAll(x => x == null);
             }
@@ -343,38 +384,38 @@ namespace IniEdit
             // Apply policies
             if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.ThrowError)
             {
-                ThrowDuplicateSectionExist(registry.GetInternalSections());
+                ThrowDuplicateSectionExist(doc.GetInternalSections());
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.FirstWin)
             {
-                DeduplicateSectionOnFirstWin(registry.GetInternalSections());
-                registry.RebuildSectionLookup();
+                DeduplicateSectionOnFirstWin(doc.GetInternalSections());
+                doc.RebuildSectionLookup();
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.LastWin)
             {
-                DeduplicateSectionOnLastWin(registry.GetInternalSections());
-                registry.RebuildSectionLookup();
+                DeduplicateSectionOnLastWin(doc.GetInternalSections());
+                doc.RebuildSectionLookup();
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.Merge)
             {
-                DeduplicateSectionOnMerging(registry.GetInternalSections(), option.DuplicateKeyPolicy);
-                registry.RebuildSectionLookup();
+                DeduplicateSectionOnMerging(doc.GetInternalSections(), option.DuplicateKeyPolicy);
+                doc.RebuildSectionLookup();
             }
 
             if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.ThrowError)
             {
-                ThrowDuplicatePropertyExist(registry);
+                ThrowDuplicatePropertyExist(doc);
             }
             else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.FirstWin)
             {
-                DeduplicatePropertyOnFirstWin(registry);
+                DeduplicatePropertyOnFirstWin(doc);
             }
             else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.LastWin)
             {
-                DeduplicatePropertyOnLastWin(registry);
+                DeduplicatePropertyOnLastWin(doc);
             }
 
-            return registry;
+            return doc;
         }
 
         private static void ThrowDuplicateSectionExist(List<Section> sections)
@@ -478,16 +519,16 @@ namespace IniEdit
             }
         }
 
-        public static void Save(string filePath, Document registry)
+        public static void Save(string filePath, Document document)
         {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
             using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            Save(fileStream, Encoding.UTF8, registry);
+            Save(fileStream, Encoding.UTF8, document);
         }
 
-        public static void Save(string filePath, Encoding encoding, Document registry)
+        public static void Save(string filePath, Encoding encoding, Document document)
         {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
@@ -495,37 +536,35 @@ namespace IniEdit
                 throw new ArgumentNullException(nameof(encoding));
 
             using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            Save(fileStream, encoding, registry);
+            Save(fileStream, encoding, document);
         }
 
-        public static void Save(Stream stream, Encoding encoding, Document registry)
+        public static void Save(Stream stream, Encoding encoding, Document document)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
             if (encoding == null)
                 throw new ArgumentNullException(nameof(encoding));
+            if (document == null)
+                throw new ArgumentNullException(nameof(document));
             if (!stream.CanWrite)
                 throw new ArgumentException("Stream must be writable", nameof(stream));
 
             using var writer = new StreamWriter(stream, encoding, BufferSize, leaveOpen: true);
 
             // Write default section
-            foreach (var property in registry.DefaultSection.GetProperties())
+            foreach (var property in document.DefaultSection.GetProperties())
             {
                 foreach (var comment in property.PreComments)
                 {
-                    writer.Write(registry.DefaultCommentPrefixChar);
+                    writer.Write(document.DefaultCommentPrefixChar);
                     writer.WriteLine(comment.Value);
                 }
 
-                // Auto-set IsQuoted if value contains special characters
-                if (!property.IsQuoted && NeedsQuoting(property.Value))
-                {
-                    property.IsQuoted = true;
-                }
+                var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
                 writer.Write($"{property.Name} = ");
-                if (property.IsQuoted)
+                if (shouldQuote)
                 {
                     writer.Write('"');
                     WriteEscapedValue(writer, property.Value);
@@ -537,24 +576,24 @@ namespace IniEdit
                 }
                 if (!string.IsNullOrEmpty(property.Comment?.Value))
                 {
-                    writer.Write($" {registry.DefaultCommentPrefixChar}{property.Comment.Value}");
+                    writer.Write($" {document.DefaultCommentPrefixChar}{property.Comment.Value}");
                 }
                 writer.WriteLine();
             }
-            if (registry.DefaultSection.PropertyCount > 0 &&
-                registry.SectionCount > 0)
+            if (document.DefaultSection.PropertyCount > 0 &&
+                document.SectionCount > 0)
             {
                 writer.WriteLine();
             }
 
             // Write sections
-            for (var indexSection = 0; indexSection < registry.SectionCount; indexSection++)
+            for (var indexSection = 0; indexSection < document.SectionCount; indexSection++)
             {
-                var section = registry[indexSection];
+                var section = document[indexSection];
                 // Write section comments
                 foreach (var comment in section.PreComments)
                 {
-                    writer.Write(registry.DefaultCommentPrefixChar);
+                    writer.Write(document.DefaultCommentPrefixChar);
                     writer.WriteLine(comment.Value);
                 }
 
@@ -562,7 +601,7 @@ namespace IniEdit
                 writer.Write($"[{section.Name}]");
                 if (!string.IsNullOrEmpty(section.Comment?.Value))
                 {
-                    writer.Write($" {registry.DefaultCommentPrefixChar}{section.Comment.Value}");
+                    writer.Write($" {document.DefaultCommentPrefixChar}{section.Comment.Value}");
                 }
 
                 // Write properties
@@ -571,18 +610,14 @@ namespace IniEdit
                     writer.WriteLine();
                     foreach (var comment in property.PreComments)
                     {
-                        writer.Write(registry.DefaultCommentPrefixChar);
+                        writer.Write(document.DefaultCommentPrefixChar);
                         writer.WriteLine(comment.Value);
                     }
 
-                    // Auto-set IsQuoted if value contains special characters
-                    if (!property.IsQuoted && NeedsQuoting(property.Value))
-                    {
-                        property.IsQuoted = true;
-                    }
+                    var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
                     writer.Write($"{property.Name} = ");
-                    if (property.IsQuoted)
+                    if (shouldQuote)
                     {
                         writer.Write('"');
                         WriteEscapedValue(writer, property.Value);
@@ -594,11 +629,11 @@ namespace IniEdit
                     }
                     if (!string.IsNullOrEmpty(property.Comment?.Value))
                     {
-                        writer.Write($" {registry.DefaultCommentPrefixChar}{property.Comment.Value}");
+                        writer.Write($" {document.DefaultCommentPrefixChar}{property.Comment.Value}");
                     }
                 }
 
-                if (indexSection < registry.SectionCount - 1)
+                if (indexSection < document.SectionCount - 1)
                 {
                     writer.WriteLine();
                     writer.WriteLine();
@@ -630,21 +665,32 @@ namespace IniEdit
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var registry = new Document(option);
+            var doc = new Document(option);
             using var reader = new StreamReader(stream, encoding, true, BufferSize, leaveOpen: true);
             {
 
-                Section currentSection = registry.DefaultSection;
+                Section currentSection = doc.DefaultSection;
                 var pendingComments = new List<Comment>();
                 string? line;
                 int lineNumber = 0;
                 while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
                 {
                     lineNumber++;
+
+                    // Check line length limit
+                    if (option.MaxLineLength > 0 && line.Length > option.MaxLineLength)
+                    {
+                        var error = new ParsingErrorEventArgs(lineNumber, line.Substring(0, Math.Min(100, line.Length)) + "...", $"Line exceeds maximum length ({option.MaxLineLength} characters)");
+                        ParsingError?.Invoke(null, error);
+                        if (option.CollectParsingErrors)
+                            doc.AddParsingError(error);
+                        continue;
+                    }
+
                     var span = line.AsSpan().Trim();
                     if (span.IsEmpty) continue;
 
-                    var commentSign = span.IndexOfAny(registry.CommentPrefixChars);
+                    var commentSign = span.IndexOfAny(doc.CommentPrefixChars);
                     if (commentSign == 0)
                     {
                         var commentString = span.Slice(1).ToString();
@@ -660,7 +706,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Missing closing bracket in section declaration");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -671,7 +717,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Section name cannot be empty");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -684,12 +730,12 @@ namespace IniEdit
                         {
                             var error = new ParsingErrorEventArgs(lineNumber, line, $"Invalid section name: {ex.Message}");
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
                         var commentRemains = span.Slice(closeBracket + 1).TrimStart();
-                        commentSign = commentRemains.IndexOfAny(registry.CommentPrefixChars);
+                        commentSign = commentRemains.IndexOfAny(doc.CommentPrefixChars);
                         if (commentSign == 0)
                         {
                             var commentString = commentRemains.Slice(1).ToString();
@@ -702,7 +748,17 @@ namespace IniEdit
                             pendingComments.Clear();
                         }
 
-                        registry.AddSectionInternal(currentSection);
+                        // Check section limit
+                        if (option.MaxSections > 0 && doc.SectionCount >= option.MaxSections)
+                        {
+                            var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum section limit ({option.MaxSections}) exceeded");
+                            ParsingError?.Invoke(null, error);
+                            if (option.CollectParsingErrors)
+                                doc.AddParsingError(error);
+                            continue;
+                        }
+
+                        doc.AddSectionInternal(currentSection);
                         continue;
                     }
 
@@ -713,7 +769,7 @@ namespace IniEdit
                         var error = new ParsingErrorEventArgs(lineNumber, line, "Missing equals sign in key-value pair");
                         ParsingError?.Invoke(null, error);
                         if (option.CollectParsingErrors)
-                            registry.AddParsingError(error);
+                            doc.AddParsingError(error);
                         continue;
                     }
 
@@ -722,7 +778,7 @@ namespace IniEdit
                     {
                         var error = new ParsingErrorEventArgs(lineNumber, line, "Property key cannot be empty");
                         if (option.CollectParsingErrors)
-                            registry.AddParsingError(error);
+                            doc.AddParsingError(error);
                         continue;
                     }
 
@@ -786,7 +842,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid escape sequence: incomplete escape marker");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
                         if (!isTerminated)
@@ -794,7 +850,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Unterminated quote: missing closing quotation mark");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
 
@@ -802,7 +858,7 @@ namespace IniEdit
 
                         // Check for inline comment
                         var afterQuoteSpan = remains.Slice(remainsIndex).TrimStart();
-                        commentSign = afterQuoteSpan.IndexOfAny(registry.CommentPrefixChars);
+                        commentSign = afterQuoteSpan.IndexOfAny(doc.CommentPrefixChars);
                         if (commentSign == 0)
                         {
                             comment = afterQuoteSpan.Slice(1).ToString();
@@ -812,7 +868,7 @@ namespace IniEdit
                             var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid content after closing quote");
                             ParsingError?.Invoke(null, error);
                             if (option.CollectParsingErrors)
-                                registry.AddParsingError(error);
+                                doc.AddParsingError(error);
                             continue;
                         }
                         else
@@ -823,7 +879,7 @@ namespace IniEdit
                                 var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid quote format");
                                 ParsingError?.Invoke(null, error);
                                 if (option.CollectParsingErrors)
-                                    registry.AddParsingError(error);
+                                    doc.AddParsingError(error);
                                 continue;
                             }
                         }
@@ -831,7 +887,7 @@ namespace IniEdit
                     else
                     {
                         // Check for inline comment
-                        commentSign = valueStartSpan.IndexOfAny(registry.CommentPrefixChars);
+                        commentSign = valueStartSpan.IndexOfAny(doc.CommentPrefixChars);
                         if (commentSign >= 0)
                         {
                             value = valueStartSpan.Slice(0, commentSign).TrimEnd().ToString();
@@ -842,6 +898,26 @@ namespace IniEdit
                             value = valueStartSpan.TrimEnd().ToString();
                             comment = string.Empty;
                         }
+                    }
+
+                    // Check value length limit
+                    if (option.MaxValueLength > 0 && value.Length > option.MaxValueLength)
+                    {
+                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Value length ({value.Length}) exceeds maximum ({option.MaxValueLength})");
+                        ParsingError?.Invoke(null, error);
+                        if (option.CollectParsingErrors)
+                            doc.AddParsingError(error);
+                        continue;
+                    }
+
+                    // Check property count limit
+                    if (option.MaxPropertiesPerSection > 0 && currentSection.PropertyCount >= option.MaxPropertiesPerSection)
+                    {
+                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum properties per section ({option.MaxPropertiesPerSection}) exceeded");
+                        ParsingError?.Invoke(null, error);
+                        if (option.CollectParsingErrors)
+                            doc.AddParsingError(error);
+                        continue;
                     }
 
                     var property = new Property(keyName, value);
@@ -863,9 +939,9 @@ namespace IniEdit
             }
 
             // Remove null values
-            registry.GetInternalSections().RemoveAll(x => x == null);
-            registry.RebuildSectionLookup(); // Rebuild dictionary after RemoveAll
-            foreach (Section section in registry)
+            doc.GetInternalSections().RemoveAll(x => x == null);
+            doc.RebuildSectionLookup(); // Rebuild dictionary after RemoveAll
+            foreach (Section section in doc)
             {
                 section.GetInternalProperties().RemoveAll(x => x == null);
             }
@@ -873,38 +949,38 @@ namespace IniEdit
             // Apply policies
             if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.ThrowError)
             {
-                ThrowDuplicateSectionExist(registry.GetInternalSections());
+                ThrowDuplicateSectionExist(doc.GetInternalSections());
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.FirstWin)
             {
-                DeduplicateSectionOnFirstWin(registry.GetInternalSections());
-                registry.RebuildSectionLookup();
+                DeduplicateSectionOnFirstWin(doc.GetInternalSections());
+                doc.RebuildSectionLookup();
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.LastWin)
             {
-                DeduplicateSectionOnLastWin(registry.GetInternalSections());
-                registry.RebuildSectionLookup();
+                DeduplicateSectionOnLastWin(doc.GetInternalSections());
+                doc.RebuildSectionLookup();
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.Merge)
             {
-                DeduplicateSectionOnMerging(registry.GetInternalSections(), option.DuplicateKeyPolicy);
-                registry.RebuildSectionLookup();
+                DeduplicateSectionOnMerging(doc.GetInternalSections(), option.DuplicateKeyPolicy);
+                doc.RebuildSectionLookup();
             }
 
             if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.ThrowError)
             {
-                ThrowDuplicatePropertyExist(registry);
+                ThrowDuplicatePropertyExist(doc);
             }
             else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.FirstWin)
             {
-                DeduplicatePropertyOnFirstWin(registry);
+                DeduplicatePropertyOnFirstWin(doc);
             }
             else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.LastWin)
             {
-                DeduplicatePropertyOnLastWin(registry);
+                DeduplicatePropertyOnLastWin(doc);
             }
 
-            return registry;
+            return doc;
         }
 
         /// <summary>
@@ -912,19 +988,21 @@ namespace IniEdit
         /// </summary>
         /// <param name="stream">The stream to write to.</param>
         /// <param name="encoding">The text encoding to use.</param>
-        /// <param name="registry">The document to save.</param>
+        /// <param name="document">The document to save.</param>
         /// <param name="cancellationToken">Token to cancel the operation.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
         /// <remarks>
         /// This method uses true asynchronous I/O with WriteAsync/WriteLineAsync, avoiding thread pool exhaustion.
         /// Suitable for high-concurrency scenarios.
         /// </remarks>
-        public static async Task SaveAsync(Stream stream, Encoding encoding, Document registry, CancellationToken cancellationToken = default)
+        public static async Task SaveAsync(Stream stream, Encoding encoding, Document document, CancellationToken cancellationToken = default)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
             if (encoding == null)
                 throw new ArgumentNullException(nameof(encoding));
+            if (document == null)
+                throw new ArgumentNullException(nameof(document));
             if (!stream.CanWrite)
                 throw new ArgumentException("Stream must be writable", nameof(stream));
 
@@ -933,22 +1011,18 @@ namespace IniEdit
             using var writer = new StreamWriter(stream, encoding, BufferSize, leaveOpen: true);
 
             // Write default section
-            foreach (var property in registry.DefaultSection.GetProperties())
+            foreach (var property in document.DefaultSection.GetProperties())
             {
                 foreach (var comment in property.PreComments)
                 {
-                    await writer.WriteAsync(registry.DefaultCommentPrefixChar).ConfigureAwait(false);
+                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
                     await writer.WriteLineAsync(comment.Value).ConfigureAwait(false);
                 }
 
-                // Auto-set IsQuoted if value contains special characters
-                if (!property.IsQuoted && NeedsQuoting(property.Value))
-                {
-                    property.IsQuoted = true;
-                }
+                var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
                 await writer.WriteAsync($"{property.Name} = ").ConfigureAwait(false);
-                if (property.IsQuoted)
+                if (shouldQuote)
                 {
                     await writer.WriteAsync('"').ConfigureAwait(false);
                     WriteEscapedValue(writer, property.Value);
@@ -960,24 +1034,24 @@ namespace IniEdit
                 }
                 if (!string.IsNullOrEmpty(property.Comment?.Value))
                 {
-                    await writer.WriteAsync($" {registry.DefaultCommentPrefixChar}{property.Comment.Value}").ConfigureAwait(false);
+                    await writer.WriteAsync($" {document.DefaultCommentPrefixChar}{property.Comment.Value}").ConfigureAwait(false);
                 }
                 await writer.WriteLineAsync().ConfigureAwait(false);
             }
-            if (registry.DefaultSection.PropertyCount > 0 &&
-                registry.SectionCount > 0)
+            if (document.DefaultSection.PropertyCount > 0 &&
+                document.SectionCount > 0)
             {
                 await writer.WriteLineAsync().ConfigureAwait(false);
             }
 
             // Write sections
-            for (var indexSection = 0; indexSection < registry.SectionCount; indexSection++)
+            for (var indexSection = 0; indexSection < document.SectionCount; indexSection++)
             {
-                var section = registry[indexSection];
+                var section = document[indexSection];
                 // Write section comments
                 foreach (var comment in section.PreComments)
                 {
-                    await writer.WriteAsync(registry.DefaultCommentPrefixChar).ConfigureAwait(false);
+                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
                     await writer.WriteLineAsync(comment.Value).ConfigureAwait(false);
                 }
 
@@ -985,7 +1059,7 @@ namespace IniEdit
                 await writer.WriteAsync($"[{section.Name}]").ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(section.Comment?.Value))
                 {
-                    await writer.WriteAsync($" {registry.DefaultCommentPrefixChar}{section.Comment.Value}").ConfigureAwait(false);
+                    await writer.WriteAsync($" {document.DefaultCommentPrefixChar}{section.Comment.Value}").ConfigureAwait(false);
                 }
 
                 // Write properties
@@ -994,18 +1068,14 @@ namespace IniEdit
                     await writer.WriteLineAsync().ConfigureAwait(false);
                     foreach (var comment in property.PreComments)
                     {
-                        await writer.WriteAsync(registry.DefaultCommentPrefixChar).ConfigureAwait(false);
+                        await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
                         await writer.WriteLineAsync(comment.Value).ConfigureAwait(false);
                     }
 
-                    // Auto-set IsQuoted if value contains special characters
-                    if (!property.IsQuoted && NeedsQuoting(property.Value))
-                    {
-                        property.IsQuoted = true;
-                    }
+                    var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
                     await writer.WriteAsync($"{property.Name} = ").ConfigureAwait(false);
-                    if (property.IsQuoted)
+                    if (shouldQuote)
                     {
                         await writer.WriteAsync('"').ConfigureAwait(false);
                         WriteEscapedValue(writer, property.Value);
@@ -1017,11 +1087,11 @@ namespace IniEdit
                     }
                     if (!string.IsNullOrEmpty(property.Comment?.Value))
                     {
-                        await writer.WriteAsync($" {registry.DefaultCommentPrefixChar}{property.Comment.Value}").ConfigureAwait(false);
+                        await writer.WriteAsync($" {document.DefaultCommentPrefixChar}{property.Comment.Value}").ConfigureAwait(false);
                     }
                 }
 
-                if (indexSection < registry.SectionCount - 1)
+                if (indexSection < document.SectionCount - 1)
                 {
                     await writer.WriteLineAsync().ConfigureAwait(false);
                     await writer.WriteLineAsync().ConfigureAwait(false);

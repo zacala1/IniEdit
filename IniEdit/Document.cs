@@ -13,6 +13,11 @@ namespace IniEdit
     /// </remarks>
     public class Document : IEnumerable<Section>
     {
+        /// <summary>
+        /// The name used for the default section (properties without explicit section header).
+        /// </summary>
+        public const string DefaultSectionName = "$DEFAULT";
+
         private readonly List<Section> _sections;
         private readonly Dictionary<string, Section> _sectionLookup;
         private readonly List<ParsingErrorEventArgs> _parsingErrors;
@@ -65,7 +70,7 @@ namespace IniEdit
             _sections = new List<Section>();
             _sectionLookup = new Dictionary<string, Section>(StringComparer.OrdinalIgnoreCase);
             _parsingErrors = new List<ParsingErrorEventArgs>();
-            DefaultSection = new Section("$DEFAULT");
+            DefaultSection = new Section(DefaultSectionName);
             CommentPrefixChars = option.CommentPrefixChars.ToArray();
             DefaultCommentPrefixChar = option.DefaultCommentPrefixChar;
         }
@@ -267,13 +272,11 @@ namespace IniEdit
         /// </summary>
         /// <param name="name">The name of the section to locate (case-insensitive).</param>
         /// <returns>True if the section exists; otherwise, false.</returns>
-        /// <exception cref="ArgumentNullException">Thrown when name is null or empty.</exception>
+        /// <exception cref="ArgumentException">Thrown when name is null or empty.</exception>
         public bool HasSection(string name)
         {
             if (string.IsNullOrEmpty(name))
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
+                throw new ArgumentException("Section name cannot be null or empty", nameof(name));
 
             return _sectionLookup.ContainsKey(name);
         }

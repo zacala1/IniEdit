@@ -11,12 +11,14 @@ namespace IniEdit
             return document.Where(predicate);
         }
 
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
+
         public static IEnumerable<Section> GetSectionsByPattern(this Document document, string namePattern)
         {
             if (string.IsNullOrEmpty(namePattern))
                 throw new ArgumentException("Name pattern cannot be null or empty", nameof(namePattern));
 
-            var regex = new System.Text.RegularExpressions.Regex(namePattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var regex = new System.Text.RegularExpressions.Regex(namePattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase, RegexTimeout);
             return document.Where(s => regex.IsMatch(s.Name));
         }
 
@@ -34,7 +36,7 @@ namespace IniEdit
             if (string.IsNullOrEmpty(namePattern))
                 throw new ArgumentException("Name pattern cannot be null or empty", nameof(namePattern));
 
-            var regex = new System.Text.RegularExpressions.Regex(namePattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var regex = new System.Text.RegularExpressions.Regex(namePattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase, RegexTimeout);
             return section.Where(p => regex.IsMatch(p.Name));
         }
 

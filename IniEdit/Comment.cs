@@ -5,10 +5,22 @@ namespace IniEdit
     /// </summary>
     public class Comment
     {
+        private string _prefix = ";";
+
         /// <summary>
         /// Gets or sets the comment prefix character (e.g., ';' or '#').
         /// </summary>
-        public string Prefix { get; set; }
+        /// <exception cref="ArgumentException">Thrown when prefix is null, empty, or not a single character.</exception>
+        public string Prefix
+        {
+            get => _prefix;
+            set
+            {
+                if (string.IsNullOrEmpty(value) || value.Length != 1)
+                    throw new ArgumentException("Comment prefix must be a single character", nameof(value));
+                _prefix = value;
+            }
+        }
 
         private string _value = string.Empty;
 

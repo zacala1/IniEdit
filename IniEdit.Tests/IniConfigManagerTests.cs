@@ -399,6 +399,16 @@ key2=value2";
         }
 
         [Test]
+        public void Save_NullDocument_ThrowsArgumentNullException()
+        {
+            using var stream = new MemoryStream();
+#pragma warning disable CS8625
+            Assert.Throws<ArgumentNullException>(() =>
+                IniConfigManager.Save(stream, Encoding.UTF8, null));
+#pragma warning restore CS8625
+        }
+
+        [Test]
         public void Save_ToStream_NonWritableStream_ThrowsArgumentException()
         {
             // Arrange
@@ -537,6 +547,27 @@ key3=""value with ; not a comment"" ; actual comment
                 Assert.That(loadedSection.GetProperty("key3")?.Value, Is.EqualTo("123"));
                 Assert.That(loadedSection.GetProperty("key4")?.Value, Is.EqualTo("true"));
             });
+        }
+
+        [Test]
+        public void Save_DoesNotMutateIsQuoted_WhenValueNeedsQuoting()
+        {
+            // Arrange - 특수 문자가 있어도 IsQuoted=false로 설정
+            var doc = new Document();
+            var section = new Section("Section1");
+            var prop = new Property("key1", "value with ; semicolon") { IsQuoted = false };
+            section.AddProperty(prop);
+            doc.AddSection(section);
+
+            // Act - Save 호출
+            IniConfigManager.Save(_tempFilePath, doc);
+
+            // Assert - IsQuoted가 변경되지 않아야 함
+            Assert.That(prop.IsQuoted, Is.False, "Save should not mutate IsQuoted property");
+
+            // 파일에는 자동으로 따옴표로 감싸져야 함
+            var content = File.ReadAllText(_tempFilePath);
+            Assert.That(content, Does.Contain("\"value with \\; semicolon\""));
         }
 
         #endregion

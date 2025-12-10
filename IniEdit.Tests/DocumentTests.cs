@@ -168,9 +168,9 @@
             Assert.Multiple(() =>
             {
 #pragma warning disable CS8600, CS8625
-                Assert.Throws<ArgumentNullException>(() => _document.HasSection((string)null));
+                Assert.Throws<ArgumentException>(() => _document.HasSection((string)null));
 #pragma warning restore CS8600, CS8625
-                Assert.Throws<ArgumentNullException>(() => _document.HasSection(string.Empty));
+                Assert.Throws<ArgumentException>(() => _document.HasSection(string.Empty));
             });
         }
 

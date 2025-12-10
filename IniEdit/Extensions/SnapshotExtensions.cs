@@ -50,10 +50,12 @@ namespace IniEdit.Extensions
         }
     }
 
-    // Snapshot management class
+    /// <summary>
+    /// Manages document snapshots with undo capability.
+    /// </summary>
     public class DocumentSnapshot
     {
-        private readonly Stack<Document> _snapshots;
+        private readonly LinkedList<Document> _snapshots;
         private readonly int _maxSnapshots;
 
         public Document Current { get; private set; }
@@ -68,37 +70,43 @@ namespace IniEdit.Extensions
                 throw new ArgumentException("Max snapshots must be at least 1", nameof(maxSnapshots));
 
             Current = document;
-            _snapshots = new Stack<Document>();
+            _snapshots = new LinkedList<Document>();
             _maxSnapshots = maxSnapshots;
         }
 
+        /// <summary>
+        /// Takes a snapshot of the current document state.
+        /// </summary>
         public void TakeSnapshot()
         {
             var snapshot = Current.CreateSnapshot();
-            _snapshots.Push(snapshot);
+            _snapshots.AddFirst(snapshot);
 
-            // Limit snapshot history
+            // Remove oldest snapshots if over capacity (O(1) operation)
             while (_snapshots.Count > _maxSnapshots)
             {
-                var items = _snapshots.ToArray();
-                _snapshots.Clear();
-                for (int i = 0; i < _maxSnapshots; i++)
-                {
-                    _snapshots.Push(items[i]);
-                }
+                _snapshots.RemoveLast();
             }
         }
 
+        /// <summary>
+        /// Restores the document to the most recent snapshot.
+        /// </summary>
+        /// <returns>True if restored; false if no snapshots available.</returns>
         public bool Undo()
         {
             if (!CanUndo)
                 return false;
 
-            var snapshot = _snapshots.Pop();
+            var snapshot = _snapshots.First!.Value;
+            _snapshots.RemoveFirst();
             Current.RestoreFromSnapshot(snapshot);
             return true;
         }
 
+        /// <summary>
+        /// Clears all snapshots.
+        /// </summary>
         public void ClearSnapshots()
         {
             _snapshots.Clear();

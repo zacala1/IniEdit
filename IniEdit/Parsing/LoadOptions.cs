@@ -42,15 +42,15 @@ namespace IniEdit
             return document;
         }
 
-        public static async Task<Document> LoadWithOptionsAsync(string filePath, LoadOptions options)
+        public static async Task<Document> LoadWithOptionsAsync(string filePath, LoadOptions options, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
-            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, options.FileShare, BufferSize, true);
-            var document = await Task.Run(() => Load(fileStream, Encoding.UTF8, options.ConfigOption));
+            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, options.FileShare, BufferSize, useAsync: true);
+            var document = await LoadAsync(fileStream, Encoding.UTF8, options.ConfigOption, cancellationToken).ConfigureAwait(false);
 
             // Apply section filter if provided
             if (options.SectionFilter != null)
