@@ -207,5 +207,55 @@ namespace IniEdit.Tests
             // Assert
             Assert.That(comment.Prefix, Is.EqualTo("#"));
         }
+
+        #region Prefix Validation Tests
+
+        [Test]
+        public void Prefix_SetNull_ThrowsArgumentException()
+        {
+            // Arrange
+            var comment = new Comment("test");
+
+            // Act & Assert
+#pragma warning disable CS8625
+            var ex = Assert.Throws<ArgumentException>(() => comment.Prefix = null);
+#pragma warning restore CS8625
+            Assert.That(ex!.ParamName, Is.EqualTo("value"));
+        }
+
+        [Test]
+        public void Prefix_SetEmpty_ThrowsArgumentException()
+        {
+            // Arrange
+            var comment = new Comment("test");
+
+            // Act & Assert
+            var ex = Assert.Throws<ArgumentException>(() => comment.Prefix = string.Empty);
+            Assert.That(ex!.ParamName, Is.EqualTo("value"));
+        }
+
+        [Test]
+        public void Prefix_SetMultipleCharacters_ThrowsArgumentException()
+        {
+            // Arrange
+            var comment = new Comment("test");
+
+            // Act & Assert
+            var ex = Assert.Throws<ArgumentException>(() => comment.Prefix = "##");
+            Assert.That(ex!.ParamName, Is.EqualTo("value"));
+        }
+
+        [Test]
+        public void Constructor_WithInvalidPrefix_ThrowsArgumentException()
+        {
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.Throws<ArgumentException>(() => new Comment("", "test"));
+                Assert.Throws<ArgumentException>(() => new Comment("##", "test"));
+            });
+        }
+
+        #endregion
     }
 }
