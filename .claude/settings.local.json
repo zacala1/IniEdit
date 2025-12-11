@@ -12,7 +12,9 @@
       "Bash(git commit -m \"$(cat <<''EOF''\ndocs: API 레퍼런스 완성 및 CHANGELOG 추가\n\n문서:\n- api-reference.md 완성 (Extension Methods, 예외 클래스 추가)\n- IniConfigOption 보안 옵션 문서화 (MaxSections, MaxLineLength 등)\n- CHANGELOG.md 추가\n\n버전:\n- 0.0.1 → 0.1.0 업데이트\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: 에러 처리 로직 ReportError 헬퍼로 추출\n\n- ReportError() 메서드로 공통 에러 처리 로직 추출\n- TruncateLine() 메서드로 긴 라인 잘라내기 로직 추출\n- Load/LoadAsync 양쪽에서 중복되던 에러 처리 코드 제거\n- 코드 가독성 및 유지보수성 향상\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(wc:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(dotnet add:*)",
+      "Bash(cat:*)"
     ]
   }
 }
