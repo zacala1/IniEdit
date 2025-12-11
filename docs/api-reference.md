@@ -245,6 +245,10 @@ Property WithPreComment(string comment)
 | `CollectParsingErrors` | `bool` | `false` | 파싱 에러 수집 여부 |
 | `CommentPrefixChars` | `char[]` | `[';', '#']` | 주석 문자 |
 | `DefaultCommentPrefixChar` | `char` | `';'` | 기본 주석 문자 |
+| `MaxSections` | `int` | `0` | 최대 섹션 수 (0=무제한) |
+| `MaxPropertiesPerSection` | `int` | `0` | 섹션당 최대 속성 수 |
+| `MaxValueLength` | `int` | `0` | 값 최대 길이 |
+| `MaxLineLength` | `int` | `0` | 줄 최대 길이 |
 
 ---
 
@@ -286,3 +290,131 @@ enum DuplicateKeyPolicyType
     ThrowError  // 예외 발생
 }
 ```
+
+---
+
+## Comment
+
+주석을 나타내는 클래스입니다.
+
+### 생성자
+
+```csharp
+Comment(string value)
+Comment(string prefix, string value)
+```
+
+### 속성
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| `Prefix` | `string` | 주석 접두사 (단일 문자) |
+| `Value` | `string` | 주석 내용 |
+
+---
+
+## Extension Methods
+
+### FilteringExtensions
+
+```csharp
+// Document 필터링
+IEnumerable<Section> GetSectionsWhere(this Document doc, Func<Section, bool> predicate)
+IEnumerable<Section> GetSectionsByPattern(this Document doc, string namePattern)
+
+// Section 필터링
+IEnumerable<Property> GetPropertiesWhere(this Section section, Func<Property, bool> predicate)
+IEnumerable<Property> GetPropertiesByPattern(this Section section, string namePattern)
+IEnumerable<Property> GetPropertiesWithValue(this Section section, string value)
+IEnumerable<Property> GetPropertiesContaining(this Section section, string substring)
+
+// 문서 전체 검색
+IEnumerable<(Section, Property)> FindPropertiesByName(this Document doc, string propertyName)
+IEnumerable<(Section, Property)> FindPropertiesByValue(this Document doc, string value)
+
+// 필터링된 복사본
+Document CopyWithSections(this Document source, Func<Section, bool> sectionFilter)
+Section CopyWithProperties(this Section source, Func<Property, bool> propertyFilter)
+```
+
+### EnvironmentVariablesExtensions
+
+```csharp
+// 환경변수 치환 (%VAR% 또는 $VAR 형식)
+string SubstituteEnvironmentVariablesInValue(this Property property)
+void SubstituteEnvironmentVariables(this Property property)
+void SubstituteEnvironmentVariables(this Section section)
+void SubstituteEnvironmentVariables(this Document document)
+bool TrySubstituteEnvironmentVariables(this Property property, out string substituted)
+```
+
+### SnapshotExtensions
+
+```csharp
+// 스냅샷 생성/복원
+Document CreateSnapshot(this Document source)
+void RestoreFromSnapshot(this Document target, Document snapshot)
+```
+
+### DocumentSnapshot (클래스)
+
+```csharp
+// Undo 기능이 있는 스냅샷 관리자
+DocumentSnapshot(Document document, int maxSnapshots = 10)
+
+Document Current { get; }
+int SnapshotCount { get; }
+bool CanUndo { get; }
+
+void TakeSnapshot()
+bool Undo()
+void ClearSnapshots()
+```
+
+### DocumentDiffExtensions
+
+```csharp
+// 문서 비교
+DocumentDiff Compare(this Document original, Document modified)
+```
+
+### FluentBuilderExtensions
+
+```csharp
+// Document 빌더
+DocumentBuilder ToBuilder(this Document document)
+
+// DocumentBuilder 사용법
+var doc = new DocumentBuilder()
+    .WithSection("Section1", s => s
+        .WithProperty("key", "value")
+        .WithComment("comment"))
+    .WithDefaultProperty("globalKey", "globalValue")
+    .Build();
+```
+
+---
+
+## 예외 클래스
+
+### ParsingException
+
+파싱 중 발생한 에러들을 담는 예외입니다.
+
+```csharp
+IReadOnlyList<ParsingErrorEventArgs> Errors { get; }
+```
+
+### DuplicateElementException
+
+중복 요소 발견 시 발생하는 예외입니다.
+
+### ParsingErrorEventArgs
+
+파싱 에러 정보를 담는 클래스입니다.
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| `LineNumber` | `int` | 에러 발생 줄 번호 |
+| `Line` | `string` | 에러 발생 줄 내용 |
+| `Reason` | `string` | 에러 원인 |

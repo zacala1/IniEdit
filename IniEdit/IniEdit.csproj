@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PackageId>IniEdit</PackageId>
-	<Version>0.0.1</Version>
+	<Version>0.1.0</Version>
 	<Authors>zacala1</Authors>
 	<Description>INI configuration parser and writer for .NET applications</Description>
     <PackageTags>ini;configuration;parser;dotnet</PackageTags>
