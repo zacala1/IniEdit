@@ -108,7 +108,7 @@
         /// <returns>A validation result indicating success or failure.</returns>
         public IniValidationResult ValidateValue(string value, bool isQuoted)
         {
-            if (value is null)
+            if (value == null)
                 return IniValidationResult.Error("Value cannot be null");
 
             if (!isQuoted && ContainsNewline(value))
