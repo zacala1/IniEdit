@@ -1,8 +1,19 @@
 namespace IniEdit.Extensions
 {
+    /// <summary>
+    /// Provides extension methods for creating and restoring document snapshots.
+    /// </summary>
     public static class SnapshotExtensions
     {
-        // Deep clone for Document
+        /// <summary>
+        /// Creates a deep clone of the document for snapshot purposes.
+        /// </summary>
+        /// <param name="source">The document to clone.</param>
+        /// <returns>A new document instance with all sections and properties cloned.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when source is null.</exception>
+        /// <remarks>
+        /// Preserves <see cref="IniConfigOption"/> settings including CommentPrefixChars and DefaultCommentPrefixChar.
+        /// </remarks>
         public static Document CreateSnapshot(this Document source)
         {
             if (source == null)
@@ -31,7 +42,16 @@ namespace IniEdit.Extensions
             return snapshot;
         }
 
-        // Restore from snapshot
+        /// <summary>
+        /// Restores the document state from a snapshot.
+        /// </summary>
+        /// <param name="target">The document to restore into.</param>
+        /// <param name="snapshot">The snapshot to restore from.</param>
+        /// <exception cref="ArgumentNullException">Thrown when target or snapshot is null.</exception>
+        /// <remarks>
+        /// Clears all existing sections and properties before restoring.
+        /// Does not restore IniConfigOption settings from the snapshot.
+        /// </remarks>
         public static void RestoreFromSnapshot(this Document target, Document snapshot)
         {
             if (target == null)
@@ -64,10 +84,28 @@ namespace IniEdit.Extensions
         private readonly LinkedList<Document> _snapshots;
         private readonly int _maxSnapshots;
 
+        /// <summary>
+        /// Gets the current document being managed.
+        /// </summary>
         public Document Current { get; private set; }
+
+        /// <summary>
+        /// Gets the number of stored snapshots.
+        /// </summary>
         public int SnapshotCount => _snapshots.Count;
+
+        /// <summary>
+        /// Gets a value indicating whether an undo operation is available.
+        /// </summary>
         public bool CanUndo => _snapshots.Count > 0;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DocumentSnapshot"/> class.
+        /// </summary>
+        /// <param name="document">The document to manage.</param>
+        /// <param name="maxSnapshots">Maximum number of snapshots to retain. Default is 10.</param>
+        /// <exception cref="ArgumentNullException">Thrown when document is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when maxSnapshots is less than 1.</exception>
         public DocumentSnapshot(Document document, int maxSnapshots = 10)
         {
             if (document == null)

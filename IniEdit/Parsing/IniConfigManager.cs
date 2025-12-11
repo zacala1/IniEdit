@@ -730,10 +730,7 @@ namespace IniEdit
 
                         if (sectionNameSpan.IsEmpty || sectionNameSpan.IsWhiteSpace())
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Section name cannot be empty");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Section name cannot be empty");
                             continue;
                         }
 
@@ -776,27 +773,22 @@ namespace IniEdit
                     }
 
                     // Parse property
-                    var separator = span.IndexOf('=');
-                    if (separator == -1)
+                    var equalSign = span.IndexOf('=');
+                    if (equalSign == -1)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, "Missing equals sign in key-value pair");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, "Missing equals sign in key-value pair");
                         continue;
                     }
 
-                    var keyNameSpan = span.Slice(0, separator).Trim();
+                    var keyNameSpan = span.Slice(0, equalSign).Trim();
                     if (keyNameSpan.IsEmpty)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, "Property key cannot be empty");
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, "Property key cannot be empty");
                         continue;
                     }
 
                     var keyName = keyNameSpan.ToString(); // Allocate only for key name
-                    var valueStartSpan = span.Slice(separator + 1).TrimStart();
+                    var valueStartSpan = span.Slice(equalSign + 1).TrimStart();
                     string value;
                     string comment = string.Empty;
                     bool isQuoted = false;
@@ -872,10 +864,7 @@ namespace IniEdit
                         }
                         else if (commentSign > 0)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid content after closing quote");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Invalid content after closing quote");
                             continue;
                         }
                         else
@@ -883,10 +872,7 @@ namespace IniEdit
                             afterQuoteSpan = afterQuoteSpan.Trim();
                             if (afterQuoteSpan.Length != 0)
                             {
-                                var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid quote format");
-                                ParsingError?.Invoke(null, error);
-                                if (option.CollectParsingErrors)
-                                    doc.AddParsingError(error);
+                                ReportError(doc, option, lineNumber, line, "Invalid quote format");
                                 continue;
                             }
                         }
