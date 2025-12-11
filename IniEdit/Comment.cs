@@ -93,9 +93,10 @@ namespace IniEdit
         /// Implicitly converts a string to a comment.
         /// </summary>
         /// <param name="value">The string to convert.</param>
-        public static implicit operator Comment(string value)
+        /// <returns>A new Comment instance, or null if value is null.</returns>
+        public static implicit operator Comment?(string? value)
         {
-            return new Comment(value);
+            return value == null ? null : new Comment(value);
         }
     }
 }

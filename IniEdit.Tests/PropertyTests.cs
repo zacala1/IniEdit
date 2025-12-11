@@ -867,6 +867,243 @@ namespace IniEdit.Tests
 
         #endregion
 
+        #region GetValue<T> Fast Path Tests (long, float, decimal)
+
+        [Test]
+        public void GetValue_Long_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "9223372036854775807"; // long.MaxValue
+
+            // Act
+            var result = _property.GetValue<long>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(long.MaxValue));
+        }
+
+        [Test]
+        public void GetValue_Long_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "not a long";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<long>());
+        }
+
+        [Test]
+        public void GetValue_Long_WithWhitespace_ParsesCorrectly()
+        {
+            // Arrange
+            _property.Value = "  12345678901234  ";
+
+            // Act
+            var result = _property.GetValue<long>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(12345678901234L));
+        }
+
+        [Test]
+        public void TryGetValue_Long_ValidInput_ReturnsTrueAndValue()
+        {
+            // Arrange
+            _property.Value = "9876543210";
+
+            // Act
+            var success = _property.TryGetValue<long>(out var value);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(success, Is.True);
+                Assert.That(value, Is.EqualTo(9876543210L));
+            });
+        }
+
+        [Test]
+        public void TryGetValue_Long_InvalidInput_ReturnsFalseAndDefault()
+        {
+            // Arrange
+            _property.Value = "invalid";
+
+            // Act
+            var success = _property.TryGetValue<long>(out var value);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(success, Is.False);
+                Assert.That(value, Is.EqualTo(default(long)));
+            });
+        }
+
+        [Test]
+        public void GetValue_Float_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "3.14159";
+
+            // Act
+            var result = _property.GetValue<float>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(3.14159f).Within(0.00001f));
+        }
+
+        [Test]
+        public void GetValue_Float_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "not a float";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<float>());
+        }
+
+        [Test]
+        public void GetValue_Float_ScientificNotation_ParsesCorrectly()
+        {
+            // Arrange
+            _property.Value = "1.5E+10";
+
+            // Act
+            var result = _property.GetValue<float>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(1.5E+10f).Within(1E+5f));
+        }
+
+        [Test]
+        public void TryGetValue_Float_ValidInput_ReturnsTrueAndValue()
+        {
+            // Arrange
+            _property.Value = "2.71828";
+
+            // Act
+            var success = _property.TryGetValue<float>(out var value);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(success, Is.True);
+                Assert.That(value, Is.EqualTo(2.71828f).Within(0.00001f));
+            });
+        }
+
+        [Test]
+        public void TryGetValue_Float_InvalidInput_ReturnsFalseAndDefault()
+        {
+            // Arrange
+            _property.Value = "invalid";
+
+            // Act
+            var success = _property.TryGetValue<float>(out var value);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(success, Is.False);
+                Assert.That(value, Is.EqualTo(default(float)));
+            });
+        }
+
+        [Test]
+        public void GetValue_Decimal_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "12345678901234567890.12345678";
+
+            // Act
+            var result = _property.GetValue<decimal>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(12345678901234567890.12345678m));
+        }
+
+        [Test]
+        public void GetValue_Decimal_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "not a decimal";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<decimal>());
+        }
+
+        [Test]
+        public void GetValue_Decimal_HighPrecision_PreservesPrecision()
+        {
+            // Arrange
+            _property.Value = "0.123456789012345678901234567";
+
+            // Act
+            var result = _property.GetValue<decimal>();
+
+            // Assert - decimal has 28-29 significant digits precision
+            Assert.That(result.ToString().Length, Is.GreaterThan(15));
+        }
+
+        [Test]
+        public void TryGetValue_Decimal_ValidInput_ReturnsTrueAndValue()
+        {
+            // Arrange
+            _property.Value = "999.99";
+
+            // Act
+            var success = _property.TryGetValue<decimal>(out var value);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(success, Is.True);
+                Assert.That(value, Is.EqualTo(999.99m));
+            });
+        }
+
+        [Test]
+        public void TryGetValue_Decimal_InvalidInput_ReturnsFalseAndDefault()
+        {
+            // Arrange
+            _property.Value = "invalid";
+
+            // Act
+            var success = _property.TryGetValue<decimal>(out var value);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(success, Is.False);
+                Assert.That(value, Is.EqualTo(default(decimal)));
+            });
+        }
+
+        [Test]
+        public void GetValue_BooleanExtendedFormats_ParsesCorrectly()
+        {
+            // Test "yes" and "no" formats
+            _property.Value = "yes";
+            Assert.That(_property.GetValue<bool>(), Is.True);
+
+            _property.Value = "YES";
+            Assert.That(_property.GetValue<bool>(), Is.True);
+
+            _property.Value = "no";
+            Assert.That(_property.GetValue<bool>(), Is.False);
+
+            _property.Value = "NO";
+            Assert.That(_property.GetValue<bool>(), Is.False);
+
+            _property.Value = "1";
+            Assert.That(_property.GetValue<bool>(), Is.True);
+
+            _property.Value = "0";
+            Assert.That(_property.GetValue<bool>(), Is.False);
+        }
+
+        #endregion
+
         #region Edge Case Tests - SetValueArray
 
         [Test]

@@ -150,14 +150,26 @@ namespace IniEdit.Tests
         public void ImplicitConversion_FromString_CreatesComment()
         {
             // Act
-            Comment comment = "test";
+            Comment? comment = "test";
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(comment.Prefix, Is.EqualTo(";"));
+                Assert.That(comment, Is.Not.Null);
+                Assert.That(comment!.Prefix, Is.EqualTo(";"));
                 Assert.That(comment.Value, Is.EqualTo("test"));
             });
+        }
+
+        [Test]
+        public void ImplicitConversion_FromNull_ReturnsNull()
+        {
+            // Act
+            string? nullStr = null;
+            Comment? comment = nullStr;
+
+            // Assert
+            Assert.That(comment, Is.Null);
         }
 
         [Test]
@@ -166,7 +178,7 @@ namespace IniEdit.Tests
             // Assert
             Assert.Throws<ArgumentException>(() =>
             {
-                Comment comment = "test\ntest";
+                Comment? comment = "test\ntest";
             });
         }
 

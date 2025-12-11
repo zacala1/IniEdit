@@ -58,10 +58,51 @@ namespace IniEdit
         /// </summary>
         /// <typeparam name="T">The type to convert to.</typeparam>
         /// <returns>The converted value.</returns>
+        /// <remarks>
+        /// Uses fast paths for common types (string, int, bool, double, long, float, decimal)
+        /// to avoid exception overhead from Convert.ChangeType.
+        /// </remarks>
         public T GetValue<T>()
         {
+            // Fast path for string (most common case)
             if (typeof(T) == typeof(string)) return (T)(object)_value;
 
+            // Fast paths for common primitive types using TryParse
+            if (typeof(T) == typeof(int))
+            {
+                if (int.TryParse(_value, out var intVal)) return (T)(object)intVal;
+                throw new FormatException($"Cannot convert '{_value}' to Int32");
+            }
+            if (typeof(T) == typeof(bool))
+            {
+                if (bool.TryParse(_value, out var boolVal)) return (T)(object)boolVal;
+                // Handle common alternative bool representations
+                if (_value == "1" || _value.Equals("yes", StringComparison.OrdinalIgnoreCase)) return (T)(object)true;
+                if (_value == "0" || _value.Equals("no", StringComparison.OrdinalIgnoreCase)) return (T)(object)false;
+                throw new FormatException($"Cannot convert '{_value}' to Boolean");
+            }
+            if (typeof(T) == typeof(double))
+            {
+                if (double.TryParse(_value, out var doubleVal)) return (T)(object)doubleVal;
+                throw new FormatException($"Cannot convert '{_value}' to Double");
+            }
+            if (typeof(T) == typeof(long))
+            {
+                if (long.TryParse(_value, out var longVal)) return (T)(object)longVal;
+                throw new FormatException($"Cannot convert '{_value}' to Int64");
+            }
+            if (typeof(T) == typeof(float))
+            {
+                if (float.TryParse(_value, out var floatVal)) return (T)(object)floatVal;
+                throw new FormatException($"Cannot convert '{_value}' to Single");
+            }
+            if (typeof(T) == typeof(decimal))
+            {
+                if (decimal.TryParse(_value, out var decimalVal)) return (T)(object)decimalVal;
+                throw new FormatException($"Cannot convert '{_value}' to Decimal");
+            }
+
+            // Fallback to Convert.ChangeType for other types
             return (T)Convert.ChangeType(_value, typeof(T));
         }
 
@@ -126,9 +167,10 @@ namespace IniEdit
         /// Gets the value of this property as an array of the specified type. Expected format: {value1, value2, ...}
         /// </summary>
         /// <typeparam name="T">The type of array elements.</typeparam>
+        /// <param name="maxElements">Maximum number of elements allowed. Default is 10000. Set to 0 for unlimited.</param>
         /// <returns>An array of values.</returns>
-        /// <exception cref="FormatException">Thrown when the value is not in the correct array format.</exception>
-        public T[] GetValueArray<T>()
+        /// <exception cref="FormatException">Thrown when the value is not in the correct array format or exceeds maxElements.</exception>
+        public T[] GetValueArray<T>(int maxElements = 10000)
         {
             ReadOnlySpan<char> span = _value.AsSpan().Trim();
             if (span.Length < 2 || span[0] != '{' || span[^1] != '}')
@@ -174,6 +216,10 @@ namespace IniEdit
                 if (item.IsEmpty)
                     return;
 
+                // Enforce max elements limit (0 = unlimited)
+                if (maxElements > 0 && values.Count >= maxElements)
+                    throw new FormatException($"Array exceeds maximum allowed size ({maxElements} elements)");
+
                 string valueStr = item.ToString();
 
                 // Handle quoted strings
@@ -190,11 +236,11 @@ namespace IniEdit
         /// <summary>
         /// Sets the value of this property from a string.
         /// </summary>
-        /// <param name="value">The string value to set.</param>
+        /// <param name="value">The string value to set. Null values are converted to empty string.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetStringValue(string value)
         {
-            _value = value;
+            _value = value ?? string.Empty;
         }
 
         /// <summary>

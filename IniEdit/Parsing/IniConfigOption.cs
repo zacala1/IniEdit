@@ -83,6 +83,20 @@ namespace IniEdit
         public int MaxLineLength { get; set; }
 
         /// <summary>
+        /// Maximum number of parsing errors to collect. 0 means unlimited (default).
+        /// Set this to prevent unbounded memory growth when parsing malformed files.
+        /// Only applies when <see cref="CollectParsingErrors"/> is true.
+        /// </summary>
+        public int MaxParsingErrors { get; set; }
+
+        /// <summary>
+        /// Maximum number of pending comments to buffer during parsing. 0 means unlimited (default).
+        /// Set this to prevent memory exhaustion from malicious INI files with excessive consecutive comment lines.
+        /// When the limit is reached, older comments are discarded (FIFO).
+        /// </summary>
+        public int MaxPendingComments { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="IniConfigOption"/> class with default values.
         /// </summary>
         public IniConfigOption()
@@ -96,6 +110,8 @@ namespace IniEdit
             MaxPropertiesPerSection = 0;
             MaxValueLength = 0;
             MaxLineLength = 0;
+            MaxParsingErrors = 0;
+            MaxPendingComments = 0;
         }
     }
 }

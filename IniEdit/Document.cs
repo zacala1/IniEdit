@@ -21,6 +21,7 @@ namespace IniEdit
         private readonly List<Section> _sections;
         private readonly Dictionary<string, Section> _sectionLookup;
         private readonly List<ParsingErrorEventArgs> _parsingErrors;
+        private readonly int _maxParsingErrors;
 
         /// <summary>
         /// Gets the allowed comment prefix characters for this document.
@@ -38,9 +39,9 @@ namespace IniEdit
             get { return _defaultCommentPrefixChar; }
             set
             {
-                if (!Array.Exists(CommentPrefixChars, (char c) => c == value))
+                if (Array.IndexOf(CommentPrefixChars, value) < 0)
                 {
-                    throw new ArgumentException("Invalid character prefix");
+                    throw new ArgumentException($"Character '{value}' is not in the allowed comment prefix characters. Valid characters: {string.Join(", ", CommentPrefixChars.Select(c => $"'{c}'"))}", nameof(value));
                 }
                 _defaultCommentPrefixChar = value;
             }
@@ -70,6 +71,7 @@ namespace IniEdit
             _sections = new List<Section>();
             _sectionLookup = new Dictionary<string, Section>(StringComparer.OrdinalIgnoreCase);
             _parsingErrors = new List<ParsingErrorEventArgs>();
+            _maxParsingErrors = option.MaxParsingErrors;
             DefaultSection = new Section(DefaultSectionName);
             CommentPrefixChars = option.CommentPrefixChars.ToArray();
             DefaultCommentPrefixChar = option.DefaultCommentPrefixChar;
@@ -80,9 +82,18 @@ namespace IniEdit
         /// </summary>
         public IReadOnlyList<ParsingErrorEventArgs> ParsingErrors => _parsingErrors;
 
-        internal void AddParsingError(ParsingErrorEventArgs error)
+        /// <summary>
+        /// Adds a parsing error if the maximum error count has not been reached.
+        /// </summary>
+        /// <param name="error">The parsing error to add.</param>
+        /// <returns>True if the error was added; false if the maximum limit was reached.</returns>
+        internal bool AddParsingError(ParsingErrorEventArgs error)
         {
+            if (_maxParsingErrors > 0 && _parsingErrors.Count >= _maxParsingErrors)
+                return false;
+
             _parsingErrors.Add(error);
+            return true;
         }
 
         /// <summary>

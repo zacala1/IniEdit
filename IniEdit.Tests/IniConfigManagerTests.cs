@@ -1436,5 +1436,360 @@ key=value";
         }
 
         #endregion
+
+        #region MaxParsingErrors Tests (CRITICAL - Security Feature)
+
+        [Test]
+        public void Load_WithMaxParsingErrors_LimitsErrorCollection()
+        {
+            // Arrange - 10개의 오류가 있는 파일
+            var content = @"
+[Section
+key1
+=value
+key2
+[Section2
+key3
+=empty
+key4
+key5
+key6";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxParsingErrors = 3
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(3), "Should collect only 3 errors when MaxParsingErrors=3");
+            });
+        }
+
+        [Test]
+        public void Load_WithMaxParsingErrors_Zero_CollectsUnlimitedErrors()
+        {
+            // Arrange - 5개의 오류가 있는 파일
+            var content = @"
+[Section
+key1
+=value
+key2
+key3";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxParsingErrors = 0 // unlimited
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc.ParsingErrors.Count, Is.EqualTo(5), "Should collect all errors when MaxParsingErrors=0");
+        }
+
+        [Test]
+        public void Load_WithMaxParsingErrors_ContinuesParsing()
+        {
+            // Arrange
+            var content = @"
+[Section
+key1
+=value
+[ValidSection]
+validKey=validValue";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxParsingErrors = 2
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(2), "Should stop collecting after 2 errors");
+                Assert.That(doc.SectionCount, Is.EqualTo(1), "Should still parse valid sections");
+                Assert.That(doc["ValidSection"]["validKey"].Value, Is.EqualTo("validValue"));
+            });
+        }
+
+        [Test]
+        public async Task LoadAsync_WithMaxParsingErrors_LimitsErrorCollection()
+        {
+            // Arrange
+            var content = @"
+[Section
+key1
+=value
+key2
+key3";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxParsingErrors = 2
+            };
+
+            // Act
+            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc.ParsingErrors.Count, Is.EqualTo(2), "Async load should also respect MaxParsingErrors");
+        }
+
+        #endregion
+
+        #region Security Limit Tests (MaxSections, MaxPropertiesPerSection, MaxValueLength, MaxLineLength)
+
+        [Test]
+        public void Load_WithMaxSections_LimitsSectionCount()
+        {
+            // Arrange - 5개 섹션이 있지만 3개만 허용
+            var content = @"
+[Section1]
+key1=value1
+[Section2]
+key2=value2
+[Section3]
+key3=value3
+[Section4]
+key4=value4
+[Section5]
+key5=value5";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxSections = 3
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc.SectionCount, Is.EqualTo(3), "Should have only 3 sections");
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(2), "Should report 2 errors for exceeded sections");
+                Assert.That(doc.ParsingErrors[0].Reason, Does.Contain("Maximum section limit"));
+            });
+        }
+
+        [Test]
+        public void Load_WithMaxPropertiesPerSection_LimitsPropertyCount()
+        {
+            // Arrange - 5개 속성이 있지만 3개만 허용
+            var content = @"
+[Section1]
+key1=value1
+key2=value2
+key3=value3
+key4=value4
+key5=value5";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxPropertiesPerSection = 3
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            var section = doc["Section1"];
+            Assert.Multiple(() =>
+            {
+                Assert.That(section.PropertyCount, Is.EqualTo(3), "Should have only 3 properties");
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(2), "Should report 2 errors for exceeded properties");
+                Assert.That(doc.ParsingErrors[0].Reason, Does.Contain("Maximum properties per section"));
+            });
+        }
+
+        [Test]
+        public void Load_WithMaxValueLength_RejectsLongValues()
+        {
+            // Arrange
+            var longValue = new string('x', 100);
+            var content = $@"
+[Section1]
+key1=short
+key2={longValue}
+key3=ok";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxValueLength = 50
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            var section = doc["Section1"];
+            Assert.Multiple(() =>
+            {
+                Assert.That(section.PropertyCount, Is.EqualTo(2), "Should have only 2 valid properties");
+                Assert.That(section.HasProperty("key1"), Is.True);
+                Assert.That(section.HasProperty("key2"), Is.False, "key2 should be rejected due to long value");
+                Assert.That(section.HasProperty("key3"), Is.True);
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(1));
+                Assert.That(doc.ParsingErrors[0].Reason, Does.Contain("Value length"));
+            });
+        }
+
+        [Test]
+        public void Load_WithMaxLineLength_RejectsLongLines()
+        {
+            // Arrange
+            var longLine = "[" + new string('x', 200) + "]";
+            var content = $@"
+[Section1]
+key1=value1
+{longLine}
+key2=value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxLineLength = 100
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(1));
+                Assert.That(doc.ParsingErrors[0].Reason, Does.Contain("Line exceeds maximum length"));
+            });
+        }
+
+        [Test]
+        public async Task LoadAsync_WithMaxSections_LimitsSectionCount()
+        {
+            // Arrange
+            var content = @"
+[Section1]
+key1=value1
+[Section2]
+key2=value2
+[Section3]
+key3=value3";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxSections = 2
+            };
+
+            // Act
+            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc.SectionCount, Is.EqualTo(2));
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task LoadAsync_WithMaxPropertiesPerSection_LimitsPropertyCount()
+        {
+            // Arrange
+            var content = @"
+[Section1]
+key1=value1
+key2=value2
+key3=value3";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxPropertiesPerSection = 2
+            };
+
+            // Act
+            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc["Section1"].PropertyCount, Is.EqualTo(2));
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task LoadAsync_WithMaxValueLength_RejectsLongValues()
+        {
+            // Arrange
+            var longValue = new string('y', 60);
+            var content = $@"
+[Section1]
+key1={longValue}
+key2=short";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxValueLength = 50
+            };
+
+            // Act
+            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc["Section1"].PropertyCount, Is.EqualTo(1));
+                Assert.That(doc["Section1"]["key2"].Value, Is.EqualTo("short"));
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(1));
+            });
+        }
+
+        [Test]
+        public async Task LoadAsync_WithMaxLineLength_RejectsLongLines()
+        {
+            // Arrange
+            var longKey = "key" + new string('z', 150);
+            var content = $@"
+[Section1]
+{longKey}=value
+normalKey=normalValue";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                CollectParsingErrors = true,
+                MaxLineLength = 100
+            };
+
+            // Act
+            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(1));
+                Assert.That(doc.ParsingErrors[0].Reason, Does.Contain("Line exceeds maximum length"));
+                Assert.That(doc["Section1"]["normalKey"].Value, Is.EqualTo("normalValue"));
+            });
+        }
+
+        #endregion
     }
 }

@@ -216,5 +216,100 @@ namespace IniEdit.Tests
             Assert.AreEqual("OldValue", propertyDiff.OldValue);
             Assert.AreEqual("NewValue", propertyDiff.NewValue);
         }
+
+        #region Null Parameter Tests
+
+        [Test]
+        public void Compare_NullOriginal_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Document? original = null;
+            var modified = new Document();
+
+            // Act & Assert
+#pragma warning disable CS8604
+            var ex = NUnit.Framework.Assert.Throws<ArgumentNullException>(() => original!.Compare(modified));
+#pragma warning restore CS8604
+            Assert.AreEqual("original", ex!.ParamName);
+        }
+
+        [Test]
+        public void Compare_NullModified_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var original = new Document();
+            Document? modified = null;
+
+            // Act & Assert
+#pragma warning disable CS8604
+            var ex = NUnit.Framework.Assert.Throws<ArgumentNullException>(() => original.Compare(modified!));
+#pragma warning restore CS8604
+            Assert.AreEqual("modified", ex!.ParamName);
+        }
+
+        [Test]
+        public void Compare_BothNull_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Document? original = null;
+            Document? modified = null;
+
+            // Act & Assert
+#pragma warning disable CS8604
+            NUnit.Framework.Assert.Throws<ArgumentNullException>(() => original!.Compare(modified!));
+#pragma warning restore CS8604
+        }
+
+        #endregion
+
+        #region Empty Document Tests
+
+        [Test]
+        public void Compare_BothEmptyDocuments_NoChanges()
+        {
+            // Arrange
+            var doc1 = new Document();
+            var doc2 = new Document();
+
+            // Act
+            var diff = doc1.Compare(doc2);
+
+            // Assert
+            Assert.IsFalse(diff.HasChanges);
+        }
+
+        [Test]
+        public void Compare_EmptyVsPopulated_DetectsAdditions()
+        {
+            // Arrange
+            var original = new Document();
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "Value1");
+
+            // Act
+            var diff = original.Compare(modified);
+
+            // Assert
+            Assert.IsTrue(diff.HasChanges);
+            Assert.AreEqual(1, diff.AddedSections.Count);
+        }
+
+        [Test]
+        public void Compare_PopulatedVsEmpty_DetectsRemovals()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "Value1");
+            var modified = new Document();
+
+            // Act
+            var diff = original.Compare(modified);
+
+            // Assert
+            Assert.IsTrue(diff.HasChanges);
+            Assert.AreEqual(1, diff.RemovedSections.Count);
+        }
+
+        #endregion
     }
 }

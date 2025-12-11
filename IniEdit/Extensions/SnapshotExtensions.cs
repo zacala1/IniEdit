@@ -8,7 +8,13 @@ namespace IniEdit.Extensions
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            var snapshot = new Document();
+            // Preserve IniConfigOption from source document
+            var option = new IniConfigOption
+            {
+                CommentPrefixChars = source.CommentPrefixChars.ToArray(),
+                DefaultCommentPrefixChar = source.DefaultCommentPrefixChar
+            };
+            var snapshot = new Document(option);
 
             // Copy default section properties
             foreach (var property in source.DefaultSection.GetProperties())

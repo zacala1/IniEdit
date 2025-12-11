@@ -144,6 +144,11 @@ namespace IniEdit
                     if (commentSign == 0)
                     {
                         var commentString = span.Slice(1).ToString();
+                        // Enforce MaxPendingComments limit (FIFO - remove oldest when full)
+                        if (option.MaxPendingComments > 0 && pendingComments.Count >= option.MaxPendingComments)
+                        {
+                            pendingComments.RemoveAt(0);
+                        }
                         pendingComments.Add(new Comment(commentString));
                         continue;
                     }
@@ -354,15 +359,15 @@ namespace IniEdit
                 }
             }
 
-            // Remove null values
+            // Remove null values (defensive check)
             doc.GetInternalSections().RemoveAll(x => x == null);
-            doc.RebuildSectionLookup(); // Rebuild dictionary after RemoveAll
             foreach (Section section in doc)
             {
                 section.GetInternalProperties().RemoveAll(x => x == null);
             }
 
-            // Apply policies
+            // Apply policies - RebuildSectionLookup is called once at the end
+            bool needsRebuild = false;
             if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.ThrowError)
             {
                 ThrowDuplicateSectionExist(doc.GetInternalSections());
@@ -370,17 +375,17 @@ namespace IniEdit
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.FirstWin)
             {
                 DeduplicateSectionOnFirstWin(doc.GetInternalSections());
-                doc.RebuildSectionLookup();
+                needsRebuild = true;
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.LastWin)
             {
                 DeduplicateSectionOnLastWin(doc.GetInternalSections());
-                doc.RebuildSectionLookup();
+                needsRebuild = true;
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.Merge)
             {
                 DeduplicateSectionOnMerging(doc.GetInternalSections(), option.DuplicateKeyPolicy);
-                doc.RebuildSectionLookup();
+                needsRebuild = true;
             }
 
             if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.ThrowError)
@@ -394,6 +399,12 @@ namespace IniEdit
             else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.LastWin)
             {
                 DeduplicatePropertyOnLastWin(doc);
+            }
+
+            // Single rebuild at the end for all section modifications
+            if (needsRebuild)
+            {
+                doc.RebuildSectionLookup();
             }
 
             return doc;
@@ -420,16 +431,27 @@ namespace IniEdit
 
         private static void DeduplicateSectionOnLastWin(List<Section> sections)
         {
-            HashSet<string> seen = new HashSet<string>();
+            // Optimized O(n) algorithm: build new list instead of RemoveAt (which is O(n) per call)
+            var lastOccurrence = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            // Iterate from the end, keeping only the first occurrence seen (which is the last in original order)
-            for (int i = sections.Count - 1; i >= 0; i--)
+            // First pass: find last occurrence index for each section name
+            for (int i = 0; i < sections.Count; i++)
             {
-                if (!seen.Add(sections[i].Name))
+                lastOccurrence[sections[i].Name] = i;
+            }
+
+            // Second pass: keep only items at their last occurrence index
+            int writeIndex = 0;
+            for (int i = 0; i < sections.Count; i++)
+            {
+                if (lastOccurrence[sections[i].Name] == i)
                 {
-                    sections.RemoveAt(i);
+                    sections[writeIndex++] = sections[i];
                 }
             }
+
+            // Remove trailing items
+            sections.RemoveRange(writeIndex, sections.Count - writeIndex);
         }
 
         private static void DeduplicateSectionOnMerging(List<Section> sections, DuplicateKeyPolicyType policy = DuplicateKeyPolicyType.FirstWin)
@@ -489,14 +511,28 @@ namespace IniEdit
             foreach (var section in sections)
             {
                 var properties = section.GetInternalProperties();
-                HashSet<string> seen = new HashSet<string>();
-                for (int i = properties.Count - 1; i >= 0; i--)
+
+                // Optimized O(n) algorithm: same pattern as DeduplicateSectionOnLastWin
+                var lastOccurrence = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+                // First pass: find last occurrence index for each property name
+                for (int i = 0; i < properties.Count; i++)
                 {
-                    if (!seen.Add(properties[i].Name))
+                    lastOccurrence[properties[i].Name] = i;
+                }
+
+                // Second pass: keep only items at their last occurrence index
+                int writeIndex = 0;
+                for (int i = 0; i < properties.Count; i++)
+                {
+                    if (lastOccurrence[properties[i].Name] == i)
                     {
-                        properties.RemoveAt(i);
+                        properties[writeIndex++] = properties[i];
                     }
                 }
+
+                // Remove trailing items
+                properties.RemoveRange(writeIndex, properties.Count - writeIndex);
             }
         }
 
@@ -672,6 +708,11 @@ namespace IniEdit
                     if (commentSign == 0)
                     {
                         var commentString = span.Slice(1).ToString();
+                        // Enforce MaxPendingComments limit (FIFO - remove oldest when full)
+                        if (option.MaxPendingComments > 0 && pendingComments.Count >= option.MaxPendingComments)
+                        {
+                            pendingComments.RemoveAt(0);
+                        }
                         pendingComments.Add(new Comment(commentString));
                         continue;
                     }
@@ -898,15 +939,15 @@ namespace IniEdit
                 }
             }
 
-            // Remove null values
+            // Remove null values (defensive check)
             doc.GetInternalSections().RemoveAll(x => x == null);
-            doc.RebuildSectionLookup(); // Rebuild dictionary after RemoveAll
             foreach (Section section in doc)
             {
                 section.GetInternalProperties().RemoveAll(x => x == null);
             }
 
-            // Apply policies
+            // Apply policies - RebuildSectionLookup is called once at the end
+            bool needsRebuild = false;
             if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.ThrowError)
             {
                 ThrowDuplicateSectionExist(doc.GetInternalSections());
@@ -914,17 +955,17 @@ namespace IniEdit
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.FirstWin)
             {
                 DeduplicateSectionOnFirstWin(doc.GetInternalSections());
-                doc.RebuildSectionLookup();
+                needsRebuild = true;
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.LastWin)
             {
                 DeduplicateSectionOnLastWin(doc.GetInternalSections());
-                doc.RebuildSectionLookup();
+                needsRebuild = true;
             }
             else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.Merge)
             {
                 DeduplicateSectionOnMerging(doc.GetInternalSections(), option.DuplicateKeyPolicy);
-                doc.RebuildSectionLookup();
+                needsRebuild = true;
             }
 
             if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.ThrowError)
@@ -938,6 +979,12 @@ namespace IniEdit
             else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.LastWin)
             {
                 DeduplicatePropertyOnLastWin(doc);
+            }
+
+            // Single rebuild at the end for all section modifications
+            if (needsRebuild)
+            {
+                doc.RebuildSectionLookup();
             }
 
             return doc;

@@ -1,103 +1,154 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace IniEdit
+﻿namespace IniEdit
 {
+    /// <summary>
+    /// Provides validation methods for INI configuration elements.
+    /// </summary>
     public class IniConfigValidator
     {
         private readonly IniConfigOption _option;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IniConfigValidator"/> class.
+        /// </summary>
+        /// <param name="option">The configuration options.</param>
+        /// <exception cref="ArgumentNullException">Thrown when option is null.</exception>
         public IniConfigValidator(IniConfigOption option)
         {
             _option = option ?? throw new ArgumentNullException(nameof(option));
         }
 
-        public ValidationResult ValidatePreCommentAsMultiLine(string value)
+        /// <summary>
+        /// Checks if a string contains newline characters.
+        /// </summary>
+        private static bool ContainsNewline(string value)
+            => value.AsSpan().IndexOfAny('\r', '\n') >= 0;
+
+        /// <summary>
+        /// Validates a single-line text field.
+        /// </summary>
+        private static IniValidationResult ValidateSingleLineText(string value, string fieldName)
         {
             if (string.IsNullOrEmpty(value))
-                return ValidationResult.Error("Pre-comment cannot be empty");
+                return IniValidationResult.Error($"{fieldName} cannot be empty");
 
-            return ValidationResult.Success();
+            if (ContainsNewline(value))
+                return IniValidationResult.Error($"{fieldName} cannot contain newline characters");
+
+            return IniValidationResult.Success();
         }
 
-        public ValidationResult ValidatePreComment(string value)
+        /// <summary>
+        /// Validates a pre-comment that can span multiple lines.
+        /// </summary>
+        /// <param name="value">The comment text to validate.</param>
+        /// <returns>A validation result indicating success or failure.</returns>
+        public IniValidationResult ValidatePreCommentAsMultiLine(string value)
         {
             if (string.IsNullOrEmpty(value))
-                return ValidationResult.Error("Pre-comment cannot be empty");
+                return IniValidationResult.Error("Pre-comment cannot be empty");
 
-            if (value.Contains('\n') || value.Contains('\r'))
-                return ValidationResult.Error("Pre-comment cannot contain newline characters");
-
-            return ValidationResult.Success();
+            return IniValidationResult.Success();
         }
 
-        public ValidationResult ValidateInlineComment(string value)
+        /// <summary>
+        /// Validates a single-line pre-comment.
+        /// </summary>
+        /// <param name="value">The comment text to validate.</param>
+        /// <returns>A validation result indicating success or failure.</returns>
+        public IniValidationResult ValidatePreComment(string value)
+            => ValidateSingleLineText(value, "Pre-comment");
+
+        /// <summary>
+        /// Validates an inline comment.
+        /// </summary>
+        /// <param name="value">The comment text to validate.</param>
+        /// <returns>A validation result indicating success or failure.</returns>
+        public IniValidationResult ValidateInlineComment(string value)
+            => ValidateSingleLineText(value, "Inline comment");
+
+        /// <summary>
+        /// Validates a section name.
+        /// </summary>
+        /// <param name="value">The section name to validate.</param>
+        /// <returns>A validation result indicating success or failure.</returns>
+        public IniValidationResult ValidateSectionName(string value)
         {
-            if (string.IsNullOrEmpty(value))
-                return ValidationResult.Error("Inline comment cannot be empty");
+            var result = ValidateSingleLineText(value, "Section name");
+            if (!result.IsValid)
+                return result;
 
-            if (value.Contains('\n') || value.Contains('\r'))
-                return ValidationResult.Error("Inline comment cannot contain newline characters");
+            if (value.AsSpan().IndexOfAny('[', ']') >= 0)
+                return IniValidationResult.Error("Section name cannot contain brackets");
 
-            return ValidationResult.Success();
+            return IniValidationResult.Success();
         }
 
-        public ValidationResult ValidateSectionName(string value)
+        /// <summary>
+        /// Validates a property key.
+        /// </summary>
+        /// <param name="value">The property key to validate.</param>
+        /// <returns>A validation result indicating success or failure.</returns>
+        public IniValidationResult ValidateKey(string value)
         {
-            if (string.IsNullOrEmpty(value))
-                return ValidationResult.Error("Section name cannot be empty");
-
-            if (value.Contains('\n') || value.Contains('\r'))
-                return ValidationResult.Error("Section name cannot contain newline characters");
-
-            if (value.Contains('[') || value.Contains(']'))
-                return ValidationResult.Error("Section name cannot contain brackets");
-
-            return ValidationResult.Success();
-        }
-
-        public ValidationResult ValidateKey(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return ValidationResult.Error("Key cannot be empty");
-
-            if (value.Contains('\n') || value.Contains('\r'))
-                return ValidationResult.Error("Key cannot contain newline characters");
+            var result = ValidateSingleLineText(value, "Key");
+            if (!result.IsValid)
+                return result;
 
             if (value.Contains('='))
-                return ValidationResult.Error("Key cannot contain equals sign");
+                return IniValidationResult.Error("Key cannot contain equals sign");
 
-            return ValidationResult.Success();
+            return IniValidationResult.Success();
         }
 
-        public ValidationResult ValidateValue(string value, bool isQuoted)
+        /// <summary>
+        /// Validates a property value.
+        /// </summary>
+        /// <param name="value">The property value to validate.</param>
+        /// <param name="isQuoted">Whether the value will be quoted when written.</param>
+        /// <returns>A validation result indicating success or failure.</returns>
+        public IniValidationResult ValidateValue(string value, bool isQuoted)
         {
             if (value is null)
-                return ValidationResult.Error("Value cannot be null");
+                return IniValidationResult.Error("Value cannot be null");
 
-            if (!isQuoted && (value.Contains('\n') || value.Contains('\r')))
-                return ValidationResult.Error("Unquoted value cannot contain newline characters");
+            if (!isQuoted && ContainsNewline(value))
+                return IniValidationResult.Error("Unquoted value cannot contain newline characters");
 
-            return ValidationResult.Success();
+            return IniValidationResult.Success();
         }
     }
 
-    public class ValidationResult
+    /// <summary>
+    /// Represents the result of a validation operation.
+    /// </summary>
+    public class IniValidationResult
     {
+        /// <summary>
+        /// Gets a value indicating whether the validation succeeded.
+        /// </summary>
         public bool IsValid { get; }
+
+        /// <summary>
+        /// Gets the error message if validation failed; otherwise, null.
+        /// </summary>
         public string? ErrorMessage { get; }
 
-        public static ValidationResult Success() =>
-            new ValidationResult(true, null);
+        /// <summary>
+        /// Creates a successful validation result.
+        /// </summary>
+        /// <returns>A successful validation result.</returns>
+        public static IniValidationResult Success() =>
+            new IniValidationResult(true, null);
 
-        public static ValidationResult Error(string message) =>
-            new ValidationResult(false, message);
+        /// <summary>
+        /// Creates a failed validation result with the specified error message.
+        /// </summary>
+        /// <param name="message">The error message.</param>
+        /// <returns>A failed validation result.</returns>
+        public static IniValidationResult Error(string message) =>
+            new IniValidationResult(false, message);
 
-        private ValidationResult(bool isValid, string? message)
+        private IniValidationResult(bool isValid, string? message)
         {
             IsValid = isValid;
             ErrorMessage = message;

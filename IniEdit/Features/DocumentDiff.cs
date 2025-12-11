@@ -50,8 +50,20 @@ namespace IniEdit
 
     public static class DocumentDiffExtensions
     {
+        /// <summary>
+        /// Compares two documents and returns a diff containing the changes.
+        /// </summary>
+        /// <param name="original">The original document.</param>
+        /// <param name="modified">The modified document.</param>
+        /// <returns>A DocumentDiff containing added, removed, and modified sections.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when original or modified is null.</exception>
         public static DocumentDiff Compare(this Document original, Document modified)
         {
+            if (original == null)
+                throw new ArgumentNullException(nameof(original));
+            if (modified == null)
+                throw new ArgumentNullException(nameof(modified));
+
             var diff = new DocumentDiff();
 
             // Compare DefaultSection

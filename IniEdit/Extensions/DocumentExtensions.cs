@@ -1,15 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Collections.Specialized.BitVector32;
-
 namespace IniEdit
 {
     /// <summary>
     /// Provides extension methods for sorting sections and properties in INI documents.
     /// </summary>
+    /// <remarks>
+    /// All sort operations are performed in-place with O(n log n) complexity.
+    /// Comparisons are case-insensitive using ordinal comparison rules.
+    /// </remarks>
     public static class DocumentExtensions
     {
         /// <summary>
@@ -17,6 +14,7 @@ namespace IniEdit
         /// </summary>
         /// <param name="section">The section to sort.</param>
         /// <exception cref="ArgumentNullException">Thrown when section is null.</exception>
+        /// <remarks>Time complexity: O(n log n) where n is the number of properties.</remarks>
         public static void SortPropertiesByName(this Section section)
         {
             if (section == null)
@@ -30,6 +28,7 @@ namespace IniEdit
         /// </summary>
         /// <param name="doc">The document to sort.</param>
         /// <exception cref="ArgumentNullException">Thrown when doc is null.</exception>
+        /// <remarks>Time complexity: O(s × n log n) where s is the number of sections and n is the average number of properties per section.</remarks>
         public static void SortPropertiesByName(this Document doc)
         {
             if (doc == null)
@@ -46,6 +45,7 @@ namespace IniEdit
         /// </summary>
         /// <param name="doc">The document to sort.</param>
         /// <exception cref="ArgumentNullException">Thrown when doc is null.</exception>
+        /// <remarks>Time complexity: O(n log n) where n is the number of sections.</remarks>
         public static void SortSectionsByName(this Document doc)
         {
             if (doc == null)
@@ -59,6 +59,7 @@ namespace IniEdit
         /// </summary>
         /// <param name="doc">The document to sort.</param>
         /// <exception cref="ArgumentNullException">Thrown when doc is null.</exception>
+        /// <remarks>Time complexity: O(s log s + s × n log n) where s is the number of sections and n is the average number of properties per section.</remarks>
         public static void SortAllByName(this Document doc)
         {
             if (doc == null)

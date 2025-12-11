@@ -127,10 +127,13 @@ namespace IniEdit
         /// Adds the specified property to the section.
         /// </summary>
         /// <param name="property">The property to add.</param>
+        /// <exception cref="ArgumentNullException">Thrown when property is null.</exception>
         /// <exception cref="ArgumentException">Thrown when a property with the same key already exists.</exception>
         public void AddProperty(Property property)
         {
-            if (HasProperty(property))
+            if (property == null)
+                throw new ArgumentNullException(nameof(property));
+            if (HasProperty(property.Name))
                 throw new ArgumentException("The specified key already exists in the section.");
 
             _properties.Add(property);
