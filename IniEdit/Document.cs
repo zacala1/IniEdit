@@ -174,7 +174,8 @@ namespace IniEdit
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Section? GetSectionByIndex(int index)
         {
-            if ((uint)index >= (uint)_sections.Count) return null;
+            if ((uint)index >= (uint)_sections.Count)
+                return null;
 
             return _sections[index];
         }
@@ -257,7 +258,8 @@ namespace IniEdit
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool RemoveSection(int index)
         {
-            if ((uint)index >= (uint)_sections.Count) return false;
+            if ((uint)index >= (uint)_sections.Count)
+                return false;
             var section = _sections[index];
             _sections.RemoveAt(index);
             _sectionLookup.Remove(section.Name);

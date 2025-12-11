@@ -14,7 +14,10 @@
       "Bash(wc:*)",
       "Bash(git commit:*)",
       "Bash(dotnet add:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(sort:*)",
+      "Bash(dotnet format:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: SharedMemoryLib 코드 스타일 적용\n\n변경사항:\n- .editorconfig 확장 (SharedMemoryLib 스타일 규칙 적용)\n- dotnet format 실행하여 72개 파일 스타일 통일\n- IniConfigOption sealed 키워드 추가\n- IniConfigOption에 DefaultCommentPrefixChars, DefaultCommentPrefix 상수 추가\n- ElementBaseTests.cs 추가 (커버리지 44.7% → 100%)\n\n코드 스타일:\n- private 필드: _camelCase\n- public 멤버: PascalCase\n- 상수/static readonly: PascalCase\n- Allman 스타일 중괄호\n- 4칸 들여쓰기\n\n테스트: 529개 통과\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")"
     ]
   }
 }

@@ -3,8 +3,17 @@ namespace IniEdit
     /// <summary>
     /// Configuration options for INI file parsing and writing.
     /// </summary>
-    public class IniConfigOption
+    public sealed class IniConfigOption
     {
+        /// <summary>
+        /// Default comment prefix characters: semicolon and hash.
+        /// </summary>
+        public static readonly char[] DefaultCommentPrefixChars = new[] { ';', '#' };
+
+        /// <summary>
+        /// Default comment prefix character: semicolon.
+        /// </summary>
+        public const char DefaultCommentPrefix = ';';
         /// <summary>
         /// Specifies how to handle duplicate keys within a section.
         /// </summary>

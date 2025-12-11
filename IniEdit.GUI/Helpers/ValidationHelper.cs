@@ -1,6 +1,6 @@
-using IniEdit;
 using System.Collections.Generic;
 using System.Linq;
+using IniEdit;
 
 namespace IniEdit.GUI
 {

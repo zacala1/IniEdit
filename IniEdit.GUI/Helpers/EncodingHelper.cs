@@ -1,7 +1,7 @@
 using System;
 using System.IO;
-using System.Text;
 using System.Linq;
+using System.Text;
 
 namespace IniEdit.GUI
 {
@@ -85,10 +85,14 @@ namespace IniEdit.GUI
                 }
 
                 int additionalBytes = 0;
-                if ((bytes[i] & 0xE0) == 0xC0) additionalBytes = 1;
-                else if ((bytes[i] & 0xF0) == 0xE0) additionalBytes = 2;
-                else if ((bytes[i] & 0xF8) == 0xF0) additionalBytes = 3;
-                else return false; // Invalid UTF-8 start byte
+                if ((bytes[i] & 0xE0) == 0xC0)
+                    additionalBytes = 1;
+                else if ((bytes[i] & 0xF0) == 0xE0)
+                    additionalBytes = 2;
+                else if ((bytes[i] & 0xF8) == 0xF0)
+                    additionalBytes = 3;
+                else
+                    return false; // Invalid UTF-8 start byte
 
                 if (i + additionalBytes >= bytes.Length)
                     return false;

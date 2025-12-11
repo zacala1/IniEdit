@@ -54,7 +54,8 @@ namespace IniEdit.GUI.Commands
         /// </summary>
         public void Undo()
         {
-            if (!CanUndo) return;
+            if (!CanUndo)
+                return;
 
             var command = undoStack.Pop();
             command.Undo();
@@ -68,7 +69,8 @@ namespace IniEdit.GUI.Commands
         /// </summary>
         public void Redo()
         {
-            if (!CanRedo) return;
+            if (!CanRedo)
+                return;
 
             var command = redoStack.Pop();
             command.Execute();

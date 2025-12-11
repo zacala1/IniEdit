@@ -108,7 +108,8 @@ namespace IniEdit
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Property? GetProperty(int index)
         {
-            if ((uint)index >= (uint)_properties.Count) return null;
+            if ((uint)index >= (uint)_properties.Count)
+                return null;
 
             return _properties[index];
         }
@@ -152,7 +153,8 @@ namespace IniEdit
 
             foreach (var property in collection)
             {
-                if (property == null) continue;
+                if (property == null)
+                    continue;
                 AddProperty(property);
             }
         }
@@ -244,7 +246,8 @@ namespace IniEdit
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool RemoveProperty(int index)
         {
-            if ((uint)index >= (uint)_properties.Count) return false;
+            if ((uint)index >= (uint)_properties.Count)
+                return false;
             var property = _properties[index];
             _properties.RemoveAt(index);
             _propertyLookup.Remove(property.Name);
@@ -385,7 +388,8 @@ namespace IniEdit
         /// <exception cref="ArgumentNullException">Thrown when section is null.</exception>
         public void MergeFrom(Section section, DuplicateKeyPolicyType policy = DuplicateKeyPolicyType.FirstWin)
         {
-            if (section == null) throw new ArgumentNullException(nameof(section));
+            if (section == null)
+                throw new ArgumentNullException(nameof(section));
             var clone = section.Clone();
             if (policy == DuplicateKeyPolicyType.ThrowError)
             {
@@ -405,7 +409,8 @@ namespace IniEdit
         {
             foreach (var property in section)
             {
-                if (HasProperty(property.Name)) continue;
+                if (HasProperty(property.Name))
+                    continue;
                 AddProperty(property);
             }
         }

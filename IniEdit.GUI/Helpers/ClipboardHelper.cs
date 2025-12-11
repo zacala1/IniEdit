@@ -1,6 +1,6 @@
-using IniEdit;
 using System.Text;
 using System.Windows.Forms;
+using IniEdit;
 
 namespace IniEdit.GUI
 {

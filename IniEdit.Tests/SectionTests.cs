@@ -1,4 +1,4 @@
-﻿using static IniEdit.IniConfigOption;
+using static IniEdit.IniConfigOption;
 
 namespace IniEdit.Tests
 {

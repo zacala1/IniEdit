@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Windows.Forms;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using IniEdit;
 using IniEdit.GUI.Commands;
 
@@ -317,7 +317,8 @@ namespace IniEdit.GUI
 
         private void RefreshSectionList()
         {
-            if (documentConfig == null) return;
+            if (documentConfig == null)
+                return;
 
             sectionView.Items.Clear();
             sectionView.Items.Add(GetGlobalSectionName());
@@ -468,7 +469,8 @@ namespace IniEdit.GUI
 
         private void AddSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
+            if (documentConfig == null)
+                return;
 
             using (var dialog = new InputDialog("Add Section", "Enter section name:"))
             {
@@ -497,8 +499,10 @@ namespace IniEdit.GUI
 
         private void EditSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
-            if (sectionView.SelectedItem == null) return;
+            if (documentConfig == null)
+                return;
+            if (sectionView.SelectedItem == null)
+                return;
 
             var selectedSection = GetSelectedSectionName();
             if (selectedSection == null)
@@ -544,8 +548,10 @@ namespace IniEdit.GUI
 
         private void DeleteSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
-            if (sectionView.SelectedItem == null) return;
+            if (documentConfig == null)
+                return;
+            if (sectionView.SelectedItem == null)
+                return;
 
             var selectedSection = GetSelectedSectionName();
             if (selectedSection == null)
@@ -579,9 +585,12 @@ namespace IniEdit.GUI
 
         private void MoveSectionUp(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
-            if (sectionView.SelectedItem == null) return;
-            if (sectionView.SelectedIndex <= 1) return;
+            if (documentConfig == null)
+                return;
+            if (sectionView.SelectedItem == null)
+                return;
+            if (sectionView.SelectedIndex <= 1)
+                return;
 
             int currentIndex = sectionView.SelectedIndex - 1;
             // ���� ��ġ ����
@@ -596,10 +605,13 @@ namespace IniEdit.GUI
 
         private void MoveSectionDown(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
-            if (sectionView.SelectedItem == null) return;
+            if (documentConfig == null)
+                return;
+            if (sectionView.SelectedItem == null)
+                return;
             if (sectionView.SelectedIndex == 0 ||
-                sectionView.SelectedIndex == sectionView.Items.Count - 1) return;
+                sectionView.SelectedIndex == sectionView.Items.Count - 1)
+                return;
 
             int currentIndex = sectionView.SelectedIndex - 1;
             // ���� ��ġ ����
@@ -614,8 +626,10 @@ namespace IniEdit.GUI
 
         private void DuplicateSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
-            if (sectionView.SelectedItem == null) return;
+            if (documentConfig == null)
+                return;
+            if (sectionView.SelectedItem == null)
+                return;
 
             string originalName = sectionView.SelectedItem.ToString() ?? string.Empty;
             using (var dialog = new InputDialog("Duplicate Section",
@@ -662,7 +676,8 @@ namespace IniEdit.GUI
 
         private void SortSections(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
+            if (documentConfig == null)
+                return;
             string? selectedSection = sectionView.SelectedItem?.ToString();
 
             documentConfig.SortSectionsByName();
@@ -707,7 +722,8 @@ namespace IniEdit.GUI
 
         private void EditKeyValue(object? sender, EventArgs e)
         {
-            if (propertyView.SelectedItems.Count == 0) return;
+            if (propertyView.SelectedItems.Count == 0)
+                return;
 
             var selectedItem = propertyView.SelectedItems[0];
             string oldKey = selectedItem.SubItems[0].Text;
@@ -761,7 +777,8 @@ namespace IniEdit.GUI
 
         private void DeleteKeyValue(object? sender, EventArgs e)
         {
-            if (propertyView.SelectedItems.Count == 0) return;
+            if (propertyView.SelectedItems.Count == 0)
+                return;
 
             var selectedItem = propertyView.SelectedItems[0];
             string key = selectedItem.SubItems[0].Text;
@@ -778,8 +795,10 @@ namespace IniEdit.GUI
 
         private void MoveKeyUp(object? sender, EventArgs e)
         {
-            if (propertyView.SelectedItems.Count == 0) return;
-            if (propertyView.SelectedIndices[0] == 0) return;
+            if (propertyView.SelectedItems.Count == 0)
+                return;
+            if (propertyView.SelectedIndices[0] == 0)
+                return;
 
             int currentIndex = propertyView.SelectedIndices[0];
             var selectedSection = GetSelectedSection();
@@ -796,8 +815,10 @@ namespace IniEdit.GUI
 
         private void MoveKeyDown(object? sender, EventArgs e)
         {
-            if (propertyView.SelectedItems.Count == 0) return;
-            if (propertyView.SelectedIndices[0] == propertyView.Items.Count - 1) return;
+            if (propertyView.SelectedItems.Count == 0)
+                return;
+            if (propertyView.SelectedIndices[0] == propertyView.Items.Count - 1)
+                return;
 
             int currentIndex = propertyView.SelectedIndices[0];
             var selectedSection = GetSelectedSection();
@@ -814,7 +835,8 @@ namespace IniEdit.GUI
 
         private void DuplicateKey(object? sender, EventArgs e)
         {
-            if (propertyView.SelectedItems.Count == 0) return;
+            if (propertyView.SelectedItems.Count == 0)
+                return;
 
             var selectedItem = propertyView.SelectedItems[0];
             string originalKey = selectedItem.SubItems[0].Text;
@@ -859,7 +881,8 @@ namespace IniEdit.GUI
 
         private void SortKeys(object? sender, EventArgs e)
         {
-            if (sectionView.SelectedItem == null) return;
+            if (sectionView.SelectedItem == null)
+                return;
 
             var selectedSection = GetSelectedSection();
             string? selectedKey = propertyView.SelectedItems.Count > 0 ?
@@ -906,7 +929,8 @@ namespace IniEdit.GUI
 
         private void OnSectionSelectionChanged(object? sender, EventArgs e)
         {
-            if (sectionView.SelectedItem == null) return;
+            if (sectionView.SelectedItem == null)
+                return;
 
             try
             {
@@ -970,8 +994,10 @@ namespace IniEdit.GUI
 
         private void UpdateKey(string oldKey, string newKey)
         {
-            if (oldKey == newKey) return;
-            if (sectionView.SelectedItem == null) return;
+            if (oldKey == newKey)
+                return;
+            if (sectionView.SelectedItem == null)
+                return;
 
             var selectedSection = GetSelectedSection();
             var property = selectedSection[oldKey];
@@ -988,7 +1014,8 @@ namespace IniEdit.GUI
 
         private void UpdateValue(string key, string newValue)
         {
-            if (sectionView.SelectedItem == null) return;
+            if (sectionView.SelectedItem == null)
+                return;
 
             var selectedSection = GetSelectedSection();
             selectedSection.SetProperty(key, newValue);
@@ -1006,7 +1033,8 @@ namespace IniEdit.GUI
 
         private void ValidateValueComment(string comment)
         {
-            if (string.IsNullOrEmpty(comment)) return;
+            if (string.IsNullOrEmpty(comment))
+                return;
 
             if (comment.Contains("\n"))
             {
@@ -1016,7 +1044,8 @@ namespace IniEdit.GUI
 
         private void OnPreCommentsChanged(object? sender, EventArgs e)
         {
-            if (isUpdatingCommentsFromCode) return;
+            if (isUpdatingCommentsFromCode)
+                return;
 
             if (propertyView.SelectedItems.Count > 0)
             {
@@ -1050,7 +1079,8 @@ namespace IniEdit.GUI
 
         private void OnInlineCommentChanged(object? sender, EventArgs e)
         {
-            if (isUpdatingCommentsFromCode) return;
+            if (isUpdatingCommentsFromCode)
+                return;
 
             if (propertyView.SelectedItems.Count > 0)
             {
@@ -1100,10 +1130,11 @@ namespace IniEdit.GUI
 
         private void NewFile(object? sender, EventArgs e)
         {
-            if (!PromptSaveChanges()) return;
+            if (!PromptSaveChanges())
+                return;
 
             currentFilePath = "";
-            documentConfig = new ();
+            documentConfig = new();
             commandManager.Clear(); // Clear undo/redo history
 
             RefreshSectionList();
@@ -1118,7 +1149,8 @@ namespace IniEdit.GUI
 
         private async void OpenFile(object? sender, EventArgs e)
         {
-            if (!PromptSaveChanges()) return;
+            if (!PromptSaveChanges())
+                return;
 
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
@@ -1188,7 +1220,7 @@ namespace IniEdit.GUI
 
         private async void SaveFile(object? sender, EventArgs e)
         {
-            if (documentConfig == null )
+            if (documentConfig == null)
             {
                 MessageBox.Show($"Error saving file: documentConfig invalid", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -1306,7 +1338,8 @@ namespace IniEdit.GUI
 
         private bool PromptSaveChanges()
         {
-            if (!isDirty) return true;
+            if (!isDirty)
+                return true;
 
             var result = MessageBox.Show(
                 "Do you want to save changes?",
@@ -1392,7 +1425,8 @@ namespace IniEdit.GUI
 
         private void FindNext(object? sender, EventArgs e)
         {
-            if (findReplaceDialog == null || documentConfig == null) return;
+            if (findReplaceDialog == null || documentConfig == null)
+                return;
 
             string findText = findReplaceDialog.FindText;
             bool matchCase = findReplaceDialog.MatchCase;
@@ -1465,7 +1499,8 @@ namespace IniEdit.GUI
 
         private void Replace(object? sender, EventArgs e)
         {
-            if (findReplaceDialog == null || documentConfig == null) return;
+            if (findReplaceDialog == null || documentConfig == null)
+                return;
 
             if (propertyView.SelectedItems.Count == 0)
             {
@@ -1519,7 +1554,8 @@ namespace IniEdit.GUI
 
         private void ReplaceAll(object? sender, EventArgs e)
         {
-            if (findReplaceDialog == null || documentConfig == null) return;
+            if (findReplaceDialog == null || documentConfig == null)
+                return;
 
             string findText = findReplaceDialog.FindText;
             string replaceText = findReplaceDialog.ReplaceText;
@@ -1714,7 +1750,8 @@ namespace IniEdit.GUI
 
         private void Paste(object? sender, EventArgs e)
         {
-            if (documentConfig == null) return;
+            if (documentConfig == null)
+                return;
 
             // Try to paste section
             if (ClipboardHelper.HasSection())
@@ -1796,7 +1833,8 @@ namespace IniEdit.GUI
 
         private void UpdateRecentFilesMenu()
         {
-            if (recentFilesMenuItem == null) return;
+            if (recentFilesMenuItem == null)
+                return;
 
             recentFilesMenuItem.DropDownItems.Clear();
 
@@ -2187,7 +2225,8 @@ namespace IniEdit.GUI
 
             if (encodingDialog.ShowDialog(this) == DialogResult.OK)
             {
-                if (!PromptSaveChanges()) return;
+                if (!PromptSaveChanges())
+                    return;
 
                 // Get selected encoding
                 Encoding newEncoding = encodingComboBox.SelectedIndex switch

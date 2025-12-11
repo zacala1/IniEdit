@@ -44,7 +44,8 @@ namespace IniEdit
         /// <param name="comment">The comment text.</param>
         protected void SetComment(string? comment)
         {
-            if (comment == null) return;
+            if (comment == null)
+                return;
             SetComment(new Comment(comment));
         }
 
@@ -54,7 +55,8 @@ namespace IniEdit
         /// <param name="comment">The comment object.</param>
         protected void SetComment(Comment? comment)
         {
-            if (comment == null) return;
+            if (comment == null)
+                return;
 
             Comment = Comment == null ? comment : new Comment(comment.Prefix, comment.Value);
         }
@@ -65,7 +67,8 @@ namespace IniEdit
         /// <param name="comment">The comment text to append.</param>
         protected void AppendComment(string? comment)
         {
-            if (comment == null) return;
+            if (comment == null)
+                return;
             AppendComment(new Comment(comment));
         }
 
@@ -75,7 +78,8 @@ namespace IniEdit
         /// <param name="comment">The comment object to append.</param>
         protected void AppendComment(Comment? comment)
         {
-            if (comment == null) return;
+            if (comment == null)
+                return;
 
             Comment = Comment == null ? comment : new Comment(Comment.Prefix, Comment.Value + comment.Value);
         }

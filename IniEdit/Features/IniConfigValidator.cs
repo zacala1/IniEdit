@@ -1,4 +1,4 @@
-﻿namespace IniEdit
+namespace IniEdit
 {
     /// <summary>
     /// Provides validation methods for INI configuration elements.

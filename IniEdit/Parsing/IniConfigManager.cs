@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Text;
 using static IniEdit.IniConfigOption;
 
@@ -73,17 +73,39 @@ namespace IniEdit
             {
                 switch (c)
                 {
-                    case '\0': writer.Write("\\0"); break;
-                    case '\a': writer.Write("\\a"); break;
-                    case '\b': writer.Write("\\b"); break;
-                    case '\t': writer.Write("\\t"); break;
-                    case '\r': writer.Write("\\r"); break;
-                    case '\n': writer.Write("\\n"); break;
-                    case ';': writer.Write("\\;"); break;
-                    case '#': writer.Write("\\#"); break;
-                    case '"': writer.Write("\\\""); break;
-                    case '\\': writer.Write("\\\\"); break;
-                    default: writer.Write(c); break; // No string allocation
+                    case '\0':
+                        writer.Write("\\0");
+                        break;
+                    case '\a':
+                        writer.Write("\\a");
+                        break;
+                    case '\b':
+                        writer.Write("\\b");
+                        break;
+                    case '\t':
+                        writer.Write("\\t");
+                        break;
+                    case '\r':
+                        writer.Write("\\r");
+                        break;
+                    case '\n':
+                        writer.Write("\\n");
+                        break;
+                    case ';':
+                        writer.Write("\\;");
+                        break;
+                    case '#':
+                        writer.Write("\\#");
+                        break;
+                    case '"':
+                        writer.Write("\\\"");
+                        break;
+                    case '\\':
+                        writer.Write("\\\\");
+                        break;
+                    default:
+                        writer.Write(c);
+                        break; // No string allocation
                 }
             }
         }
@@ -116,7 +138,8 @@ namespace IniEdit
                 throw new ArgumentNullException(nameof(encoding));
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));
-            if (option == null) option = new IniConfigOption();
+            if (option == null)
+                option = new IniConfigOption();
 
             var doc = new Document(option);
             using var reader = new StreamReader(stream, encoding, true, BufferSize, leaveOpen: true);
@@ -138,7 +161,8 @@ namespace IniEdit
                     }
 
                     var span = line.AsSpan().Trim();
-                    if (span.IsEmpty) continue;
+                    if (span.IsEmpty)
+                        continue;
 
                     var commentSign = span.IndexOfAny(doc.CommentPrefixChars);
                     if (commentSign == 0)
@@ -415,7 +439,8 @@ namespace IniEdit
             HashSet<string> seen = new HashSet<string>();
             foreach (var section in sections)
             {
-                if (section == null) continue;
+                if (section == null)
+                    continue;
                 if (!seen.Add(section.Name))
                 {
                     throw new InvalidOperationException($"Duplicate section name '{section.Name}' found");
@@ -483,11 +508,13 @@ namespace IniEdit
         {
             foreach (var section in sections)
             {
-                if (section == null) continue;
+                if (section == null)
+                    continue;
                 HashSet<string> seen = new HashSet<string>();
                 foreach (var property in section)
                 {
-                    if (property == null) continue;
+                    if (property == null)
+                        continue;
                     if (!seen.Add(property.Name))
                     {
                         throw new InvalidOperationException($"Duplicate property name '{property.Name}' found in section '{section.Name}'. Each property name must be unique within a section.");
@@ -678,7 +705,8 @@ namespace IniEdit
                 throw new ArgumentNullException(nameof(encoding));
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));
-            if (option == null) option = new IniConfigOption();
+            if (option == null)
+                option = new IniConfigOption();
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -702,7 +730,8 @@ namespace IniEdit
                     }
 
                     var span = line.AsSpan().Trim();
-                    if (span.IsEmpty) continue;
+                    if (span.IsEmpty)
+                        continue;
 
                     var commentSign = span.IndexOfAny(doc.CommentPrefixChars);
                     if (commentSign == 0)

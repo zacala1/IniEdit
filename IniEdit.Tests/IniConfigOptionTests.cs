@@ -1,4 +1,4 @@
-﻿namespace IniEdit.Tests
+namespace IniEdit.Tests
 {
     [TestFixture]
     public class IniConfigOptionTests

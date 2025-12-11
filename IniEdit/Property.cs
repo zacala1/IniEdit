@@ -65,40 +65,49 @@ namespace IniEdit
         public T GetValue<T>()
         {
             // Fast path for string (most common case)
-            if (typeof(T) == typeof(string)) return (T)(object)_value;
+            if (typeof(T) == typeof(string))
+                return (T)(object)_value;
 
             // Fast paths for common primitive types using TryParse
             if (typeof(T) == typeof(int))
             {
-                if (int.TryParse(_value, out var intVal)) return (T)(object)intVal;
+                if (int.TryParse(_value, out var intVal))
+                    return (T)(object)intVal;
                 throw new FormatException($"Cannot convert '{_value}' to Int32");
             }
             if (typeof(T) == typeof(bool))
             {
-                if (bool.TryParse(_value, out var boolVal)) return (T)(object)boolVal;
+                if (bool.TryParse(_value, out var boolVal))
+                    return (T)(object)boolVal;
                 // Handle common alternative bool representations
-                if (_value == "1" || _value.Equals("yes", StringComparison.OrdinalIgnoreCase)) return (T)(object)true;
-                if (_value == "0" || _value.Equals("no", StringComparison.OrdinalIgnoreCase)) return (T)(object)false;
+                if (_value == "1" || _value.Equals("yes", StringComparison.OrdinalIgnoreCase))
+                    return (T)(object)true;
+                if (_value == "0" || _value.Equals("no", StringComparison.OrdinalIgnoreCase))
+                    return (T)(object)false;
                 throw new FormatException($"Cannot convert '{_value}' to Boolean");
             }
             if (typeof(T) == typeof(double))
             {
-                if (double.TryParse(_value, out var doubleVal)) return (T)(object)doubleVal;
+                if (double.TryParse(_value, out var doubleVal))
+                    return (T)(object)doubleVal;
                 throw new FormatException($"Cannot convert '{_value}' to Double");
             }
             if (typeof(T) == typeof(long))
             {
-                if (long.TryParse(_value, out var longVal)) return (T)(object)longVal;
+                if (long.TryParse(_value, out var longVal))
+                    return (T)(object)longVal;
                 throw new FormatException($"Cannot convert '{_value}' to Int64");
             }
             if (typeof(T) == typeof(float))
             {
-                if (float.TryParse(_value, out var floatVal)) return (T)(object)floatVal;
+                if (float.TryParse(_value, out var floatVal))
+                    return (T)(object)floatVal;
                 throw new FormatException($"Cannot convert '{_value}' to Single");
             }
             if (typeof(T) == typeof(decimal))
             {
-                if (decimal.TryParse(_value, out var decimalVal)) return (T)(object)decimalVal;
+                if (decimal.TryParse(_value, out var decimalVal))
+                    return (T)(object)decimalVal;
                 throw new FormatException($"Cannot convert '{_value}' to Decimal");
             }
 
@@ -273,7 +282,8 @@ namespace IniEdit
 
             for (int i = 0; i < values.Length; i++)
             {
-                if (i > 0) builder.Append(", ");
+                if (i > 0)
+                    builder.Append(", ");
 
                 string valueStr = Convert.ToString(values[i]) ?? string.Empty;
 
@@ -286,7 +296,8 @@ namespace IniEdit
                     builder.Append('"');
                     foreach (char c in valueStr)
                     {
-                        if (c == '"') builder.Append('\\');
+                        if (c == '"')
+                            builder.Append('\\');
                         builder.Append(c);
                     }
                     builder.Append('"');

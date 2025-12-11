@@ -27,8 +27,10 @@ namespace IniEdit
         /// <returns>A string with each comment on a separate line, or empty string if no comments.</returns>
         public string ToMultiLineText()
         {
-            if (Count == 0) return string.Empty;
-            if (Count == 1) return this[0].Value;
+            if (Count == 0)
+                return string.Empty;
+            if (Count == 1)
+                return this[0].Value;
 
             var builder = new StringBuilder(Count * EstimatedCharsPerComment);
             builder.Append(this[0].Value);
