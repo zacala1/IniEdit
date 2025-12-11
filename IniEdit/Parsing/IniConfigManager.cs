@@ -28,6 +28,23 @@ namespace IniEdit
         private static readonly char[] SpecialCharsRequiringQuotes = new[] { ';', '#', '\r', '\n', '\t', '\0', '\a', '\b', '\\', '"' };
 
         /// <summary>
+        /// Reports a parsing error by invoking the event and optionally collecting the error.
+        /// </summary>
+        private static void ReportError(Document doc, IniConfigOption option, int lineNumber, string line, string reason)
+        {
+            var error = new ParsingErrorEventArgs(lineNumber, line, reason);
+            ParsingError?.Invoke(null, error);
+            if (option.CollectParsingErrors)
+                doc.AddParsingError(error);
+        }
+
+        /// <summary>
+        /// Truncates a line for error reporting (max 100 chars).
+        /// </summary>
+        private static string TruncateLine(string line, int maxLength = 100)
+            => line.Length > maxLength ? line.Substring(0, maxLength) + "..." : line;
+
+        /// <summary>
         /// Checks if a property value needs to be quoted to preserve special characters.
         /// </summary>
         private static bool NeedsQuoting(string value)
@@ -116,10 +133,7 @@ namespace IniEdit
                     // Check line length limit
                     if (option.MaxLineLength > 0 && line.Length > option.MaxLineLength)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line.Substring(0, Math.Min(100, line.Length)) + "...", $"Line exceeds maximum length ({option.MaxLineLength} characters)");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, TruncateLine(line), $"Line exceeds maximum length ({option.MaxLineLength} characters)");
                         continue;
                     }
 
@@ -139,10 +153,7 @@ namespace IniEdit
                         var closeBracket = span.IndexOf(']');
                         if (closeBracket == -1)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Missing closing bracket in section declaration");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Missing closing bracket in section declaration");
                             continue;
                         }
 
@@ -150,10 +161,7 @@ namespace IniEdit
 
                         if (string.IsNullOrWhiteSpace(sectionName))
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Section name cannot be empty");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Section name cannot be empty");
                             continue;
                         }
 
@@ -186,10 +194,7 @@ namespace IniEdit
                         // Check section limit
                         if (option.MaxSections > 0 && doc.SectionCount >= option.MaxSections)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum section limit ({option.MaxSections}) exceeded");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, $"Maximum section limit ({option.MaxSections}) exceeded");
                             continue;
                         }
 
@@ -200,20 +205,14 @@ namespace IniEdit
                     var equalSign = span.IndexOf('=');
                     if (equalSign == -1)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, "Missing equals sign in key-value pair");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, "Missing equals sign in key-value pair");
                         continue;
                     }
 
                     var keyName = span.Slice(0, equalSign).Trim().ToString();
                     if (string.IsNullOrEmpty(keyName))
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, "Key is empty");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, "Key is empty");
                         continue;
                     }
 
@@ -274,18 +273,12 @@ namespace IniEdit
                         }
                         if (isEscaped)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid escape sequence: incomplete escape marker");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Invalid escape sequence: incomplete escape marker");
                             continue;
                         }
                         if (!isTerminated)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Unterminated quote: missing closing quotation mark");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Unterminated quote: missing closing quotation mark");
                             continue;
                         }
 
@@ -302,20 +295,14 @@ namespace IniEdit
                         }
                         else if (commentSign > 0)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid content after closing quote");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Invalid content after closing quote");
                             continue;
                         }
 
                         remains = remains.Trim();
                         if (remains.Length != 0)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid quote format");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Invalid quote format");
                             continue;
                         }
                     }
@@ -338,20 +325,14 @@ namespace IniEdit
                     // Check value length limit
                     if (option.MaxValueLength > 0 && value.Length > option.MaxValueLength)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Value length ({value.Length}) exceeds maximum ({option.MaxValueLength})");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, $"Value length ({value.Length}) exceeds maximum ({option.MaxValueLength})");
                         continue;
                     }
 
                     // Check property count limit
                     if (option.MaxPropertiesPerSection > 0 && currentSection.PropertyCount >= option.MaxPropertiesPerSection)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum properties per section ({option.MaxPropertiesPerSection}) exceeded");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, $"Maximum properties per section ({option.MaxPropertiesPerSection}) exceeded");
                         continue;
                     }
 
@@ -680,10 +661,7 @@ namespace IniEdit
                     // Check line length limit
                     if (option.MaxLineLength > 0 && line.Length > option.MaxLineLength)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line.Substring(0, Math.Min(100, line.Length)) + "...", $"Line exceeds maximum length ({option.MaxLineLength} characters)");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, TruncateLine(line), $"Line exceeds maximum length ({option.MaxLineLength} characters)");
                         continue;
                     }
 
@@ -703,10 +681,7 @@ namespace IniEdit
                         var closeBracket = span.IndexOf(']');
                         if (closeBracket == -1)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Missing closing bracket in section declaration");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Missing closing bracket in section declaration");
                             continue;
                         }
 
@@ -751,10 +726,7 @@ namespace IniEdit
                         // Check section limit
                         if (option.MaxSections > 0 && doc.SectionCount >= option.MaxSections)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum section limit ({option.MaxSections}) exceeded");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, $"Maximum section limit ({option.MaxSections}) exceeded");
                             continue;
                         }
 
@@ -839,18 +811,12 @@ namespace IniEdit
                         }
                         if (isEscaped)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Invalid escape sequence: incomplete escape marker");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Invalid escape sequence: incomplete escape marker");
                             continue;
                         }
                         if (!isTerminated)
                         {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, "Unterminated quote: missing closing quotation mark");
-                            ParsingError?.Invoke(null, error);
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
+                            ReportError(doc, option, lineNumber, line, "Unterminated quote: missing closing quotation mark");
                             continue;
                         }
 
@@ -903,20 +869,14 @@ namespace IniEdit
                     // Check value length limit
                     if (option.MaxValueLength > 0 && value.Length > option.MaxValueLength)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Value length ({value.Length}) exceeds maximum ({option.MaxValueLength})");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, $"Value length ({value.Length}) exceeds maximum ({option.MaxValueLength})");
                         continue;
                     }
 
                     // Check property count limit
                     if (option.MaxPropertiesPerSection > 0 && currentSection.PropertyCount >= option.MaxPropertiesPerSection)
                     {
-                        var error = new ParsingErrorEventArgs(lineNumber, line, $"Maximum properties per section ({option.MaxPropertiesPerSection}) exceeded");
-                        ParsingError?.Invoke(null, error);
-                        if (option.CollectParsingErrors)
-                            doc.AddParsingError(error);
+                        ReportError(doc, option, lineNumber, line, $"Maximum properties per section ({option.MaxPropertiesPerSection}) exceeded");
                         continue;
                     }
 
