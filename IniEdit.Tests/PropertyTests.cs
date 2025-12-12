@@ -1147,5 +1147,287 @@ namespace IniEdit.Tests
         }
 
         #endregion
+
+        #region GetValue<T> Additional Fast Path Tests (short, ushort, byte, sbyte, uint, ulong, char, DateTime, Guid)
+
+        [Test]
+        public void GetValue_Short_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "12345";
+
+            // Act
+            var result = _property.GetValue<short>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo((short)12345));
+        }
+
+        [Test]
+        public void GetValue_Short_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "not a number";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<short>());
+        }
+
+        [Test]
+        public void GetValue_UShort_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "65535";
+
+            // Act
+            var result = _property.GetValue<ushort>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo((ushort)65535));
+        }
+
+        [Test]
+        public void GetValue_UShort_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "-1";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<ushort>());
+        }
+
+        [Test]
+        public void GetValue_Byte_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "255";
+
+            // Act
+            var result = _property.GetValue<byte>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo((byte)255));
+        }
+
+        [Test]
+        public void GetValue_Byte_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "256";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<byte>());
+        }
+
+        [Test]
+        public void GetValue_SByte_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "-128";
+
+            // Act
+            var result = _property.GetValue<sbyte>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo((sbyte)-128));
+        }
+
+        [Test]
+        public void GetValue_SByte_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "128";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<sbyte>());
+        }
+
+        [Test]
+        public void GetValue_UInt_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "4294967295";
+
+            // Act
+            var result = _property.GetValue<uint>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(4294967295U));
+        }
+
+        [Test]
+        public void GetValue_UInt_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "-1";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<uint>());
+        }
+
+        [Test]
+        public void GetValue_ULong_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "18446744073709551615";
+
+            // Act
+            var result = _property.GetValue<ulong>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(18446744073709551615UL));
+        }
+
+        [Test]
+        public void GetValue_ULong_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "-1";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<ulong>());
+        }
+
+        [Test]
+        public void GetValue_Char_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "A";
+
+            // Act
+            var result = _property.GetValue<char>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo('A'));
+        }
+
+        [Test]
+        public void GetValue_Char_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "AB";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<char>());
+        }
+
+        [Test]
+        public void GetValue_DateTime_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            _property.Value = "2024-12-25";
+
+            // Act
+            var result = _property.GetValue<DateTime>();
+
+            // Assert
+            Assert.That(result.Year, Is.EqualTo(2024));
+            Assert.That(result.Month, Is.EqualTo(12));
+            Assert.That(result.Day, Is.EqualTo(25));
+        }
+
+        [Test]
+        public void GetValue_DateTime_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "not a date";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<DateTime>());
+        }
+
+        [Test]
+        public void GetValue_Guid_ValidInput_ReturnsCorrectValue()
+        {
+            // Arrange
+            var guid = Guid.NewGuid();
+            _property.Value = guid.ToString();
+
+            // Act
+            var result = _property.GetValue<Guid>();
+
+            // Assert
+            Assert.That(result, Is.EqualTo(guid));
+        }
+
+        [Test]
+        public void GetValue_Guid_InvalidInput_ThrowsFormatException()
+        {
+            // Arrange
+            _property.Value = "not a guid";
+
+            // Act & Assert
+            Assert.Throws<FormatException>(() => _property.GetValue<Guid>());
+        }
+
+        [Test]
+        public void TryGetValue_AdditionalTypes_ValidInput_ReturnsTrueAndValue()
+        {
+            // short
+            _property.Value = "100";
+            Assert.That(_property.TryGetValue<short>(out var shortVal), Is.True);
+            Assert.That(shortVal, Is.EqualTo((short)100));
+
+            // ushort
+            _property.Value = "200";
+            Assert.That(_property.TryGetValue<ushort>(out var ushortVal), Is.True);
+            Assert.That(ushortVal, Is.EqualTo((ushort)200));
+
+            // byte
+            _property.Value = "50";
+            Assert.That(_property.TryGetValue<byte>(out var byteVal), Is.True);
+            Assert.That(byteVal, Is.EqualTo((byte)50));
+
+            // sbyte
+            _property.Value = "-50";
+            Assert.That(_property.TryGetValue<sbyte>(out var sbyteVal), Is.True);
+            Assert.That(sbyteVal, Is.EqualTo((sbyte)-50));
+
+            // uint
+            _property.Value = "1000000";
+            Assert.That(_property.TryGetValue<uint>(out var uintVal), Is.True);
+            Assert.That(uintVal, Is.EqualTo(1000000U));
+
+            // ulong
+            _property.Value = "9999999999";
+            Assert.That(_property.TryGetValue<ulong>(out var ulongVal), Is.True);
+            Assert.That(ulongVal, Is.EqualTo(9999999999UL));
+
+            // char
+            _property.Value = "X";
+            Assert.That(_property.TryGetValue<char>(out var charVal), Is.True);
+            Assert.That(charVal, Is.EqualTo('X'));
+
+            // DateTime
+            _property.Value = "2024-01-01";
+            Assert.That(_property.TryGetValue<DateTime>(out var dateVal), Is.True);
+            Assert.That(dateVal.Year, Is.EqualTo(2024));
+
+            // Guid
+            var guid = Guid.NewGuid();
+            _property.Value = guid.ToString();
+            Assert.That(_property.TryGetValue<Guid>(out var guidVal), Is.True);
+            Assert.That(guidVal, Is.EqualTo(guid));
+        }
+
+        [Test]
+        public void TryGetValue_AdditionalTypes_InvalidInput_ReturnsFalse()
+        {
+            _property.Value = "invalid";
+
+            Assert.That(_property.TryGetValue<short>(out _), Is.False);
+            Assert.That(_property.TryGetValue<ushort>(out _), Is.False);
+            Assert.That(_property.TryGetValue<byte>(out _), Is.False);
+            Assert.That(_property.TryGetValue<sbyte>(out _), Is.False);
+            Assert.That(_property.TryGetValue<uint>(out _), Is.False);
+            Assert.That(_property.TryGetValue<ulong>(out _), Is.False);
+            Assert.That(_property.TryGetValue<DateTime>(out _), Is.False);
+            Assert.That(_property.TryGetValue<Guid>(out _), Is.False);
+
+            _property.Value = "AB"; // Too long for char
+            Assert.That(_property.TryGetValue<char>(out _), Is.False);
+        }
+
+        #endregion
     }
 }

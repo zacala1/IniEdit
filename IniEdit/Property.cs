@@ -59,7 +59,8 @@ namespace IniEdit
         /// <typeparam name="T">The type to convert to.</typeparam>
         /// <returns>The converted value.</returns>
         /// <remarks>
-        /// Uses fast paths for common types (string, int, bool, double, long, float, decimal)
+        /// Uses fast paths for common types (string, int, bool, double, long, float, decimal,
+        /// short, ushort, byte, sbyte, uint, ulong, char, DateTime, Guid)
         /// to avoid exception overhead from Convert.ChangeType.
         /// </remarks>
         public T GetValue<T>()
@@ -109,6 +110,60 @@ namespace IniEdit
                 if (decimal.TryParse(_value, out var decimalVal))
                     return (T)(object)decimalVal;
                 throw new FormatException($"Cannot convert '{_value}' to Decimal");
+            }
+            if (typeof(T) == typeof(short))
+            {
+                if (short.TryParse(_value, out var shortVal))
+                    return (T)(object)shortVal;
+                throw new FormatException($"Cannot convert '{_value}' to Int16");
+            }
+            if (typeof(T) == typeof(ushort))
+            {
+                if (ushort.TryParse(_value, out var ushortVal))
+                    return (T)(object)ushortVal;
+                throw new FormatException($"Cannot convert '{_value}' to UInt16");
+            }
+            if (typeof(T) == typeof(byte))
+            {
+                if (byte.TryParse(_value, out var byteVal))
+                    return (T)(object)byteVal;
+                throw new FormatException($"Cannot convert '{_value}' to Byte");
+            }
+            if (typeof(T) == typeof(sbyte))
+            {
+                if (sbyte.TryParse(_value, out var sbyteVal))
+                    return (T)(object)sbyteVal;
+                throw new FormatException($"Cannot convert '{_value}' to SByte");
+            }
+            if (typeof(T) == typeof(uint))
+            {
+                if (uint.TryParse(_value, out var uintVal))
+                    return (T)(object)uintVal;
+                throw new FormatException($"Cannot convert '{_value}' to UInt32");
+            }
+            if (typeof(T) == typeof(ulong))
+            {
+                if (ulong.TryParse(_value, out var ulongVal))
+                    return (T)(object)ulongVal;
+                throw new FormatException($"Cannot convert '{_value}' to UInt64");
+            }
+            if (typeof(T) == typeof(char))
+            {
+                if (_value.Length == 1)
+                    return (T)(object)_value[0];
+                throw new FormatException($"Cannot convert '{_value}' to Char");
+            }
+            if (typeof(T) == typeof(DateTime))
+            {
+                if (DateTime.TryParse(_value, out var dateVal))
+                    return (T)(object)dateVal;
+                throw new FormatException($"Cannot convert '{_value}' to DateTime");
+            }
+            if (typeof(T) == typeof(Guid))
+            {
+                if (Guid.TryParse(_value, out var guidVal))
+                    return (T)(object)guidVal;
+                throw new FormatException($"Cannot convert '{_value}' to Guid");
             }
 
             // Fallback to Convert.ChangeType for other types
