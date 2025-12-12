@@ -164,6 +164,12 @@ dotnet_diagnostic.CS1591.severity = suggestion
 dotnet_diagnostic.NUnit2005.severity = none
 dotnet_diagnostic.NUnit2031.severity = none
 
+# Designer generated files - disable naming rules
+[*.Designer.cs]
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = none
+dotnet_naming_rule.public_members_should_be_pascal_case.severity = none
+generated_code = true
+
 # JSON files
 [*.json]
 indent_size = 2

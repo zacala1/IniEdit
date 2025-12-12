@@ -14,41 +14,41 @@ namespace IniEdit.GUI
     public partial class MainForm : Form
     {
         #region Fields
-        private string currentFilePath = string.Empty;
-        private Document? documentConfig;
-        private IniConfigOption configOptions;
-        private bool isDirty = false;
-        private Encoding currentEncoding = Encoding.UTF8;
+        private string _currentFilePath = string.Empty;
+        private Document? _documentConfig;
+        private IniConfigOption _configOptions;
+        private bool _isDirty = false;
+        private Encoding _currentEncoding = Encoding.UTF8;
 
         // Inline cell editing
-        private TextBox inlineCellEditBox = new();
-        private ListViewItem.ListViewSubItem? currentEditingCell;
+        private TextBox _inlineCellEditBox = new();
+        private ListViewItem.ListViewSubItem? _currentEditingCell;
 
         // Comment editing
-        private bool isUpdatingCommentsFromCode = false;
+        private bool _isUpdatingCommentsFromCode = false;
 
         // Find/Replace
-        private FindReplaceDialog? findReplaceDialog = null;
-        private int lastSearchSectionIndex = -1;
-        private int lastSearchPropertyIndex = -1;
+        private FindReplaceDialog? _findReplaceDialog = null;
+        private int _lastSearchSectionIndex = -1;
+        private int _lastSearchPropertyIndex = -1;
 
         // Undo/Redo
-        private readonly CommandManager commandManager = new();
-        private ToolStripMenuItem? undoMenuItem;
-        private ToolStripMenuItem? redoMenuItem;
+        private readonly CommandManager _commandManager = new();
+        private ToolStripMenuItem? _undoMenuItem;
+        private ToolStripMenuItem? _redoMenuItem;
 
         // Recent Files
-        private readonly RecentFilesManager recentFilesManager = new();
-        private ToolStripMenuItem? recentFilesMenuItem;
+        private readonly RecentFilesManager _recentFilesManager = new();
+        private ToolStripMenuItem? _recentFilesMenuItem;
 
         // Copy/Paste
-        private ToolStripMenuItem? copyMenuItem;
-        private ToolStripMenuItem? cutMenuItem;
-        private ToolStripMenuItem? pasteMenuItem;
+        private ToolStripMenuItem? _copyMenuItem;
+        private ToolStripMenuItem? _cutMenuItem;
+        private ToolStripMenuItem? _pasteMenuItem;
 
         // Validation and Statistics
-        private ToolStripStatusLabel? encodingStatusLabel;
-        private ToolStripStatusLabel? validationStatusLabel;
+        private ToolStripStatusLabel? _encodingStatusLabel;
+        private ToolStripStatusLabel? _validationStatusLabel;
 
         // Performance optimization caches
         private Font? _duplicateKeyFont;
@@ -59,7 +59,7 @@ namespace IniEdit.GUI
         public MainForm()
         {
             InitializeComponent();
-            configOptions = new IniConfigOption { CollectParsingErrors = true };
+            _configOptions = new IniConfigOption { CollectParsingErrors = true };
             SetupForm();
             SetupInlineCellEditor();
             SetupMenuItems();
@@ -97,17 +97,17 @@ namespace IniEdit.GUI
         private void SetupStatusBar()
         {
             // Add encoding status label
-            encodingStatusLabel = new ToolStripStatusLabel
+            _encodingStatusLabel = new ToolStripStatusLabel
             {
                 Text = "Encoding: UTF-8",
                 BorderSides = ToolStripStatusLabelBorderSides.Left | ToolStripStatusLabelBorderSides.Right,
                 BorderStyle = Border3DStyle.Etched
             };
-            encodingStatusLabel.Click += ShowEncodingMenu;
-            statusStrip1.Items.Add(encodingStatusLabel);
+            _encodingStatusLabel.Click += ShowEncodingMenu;
+            statusStrip1.Items.Add(_encodingStatusLabel);
 
             // Add validation status label
-            validationStatusLabel = new ToolStripStatusLabel
+            _validationStatusLabel = new ToolStripStatusLabel
             {
                 Text = "✓ No errors",
                 ForeColor = Color.Green,
@@ -115,19 +115,19 @@ namespace IniEdit.GUI
                 BorderStyle = Border3DStyle.Etched,
                 IsLink = false
             };
-            validationStatusLabel.Click += ShowValidationDialog;
-            statusStrip1.Items.Add(validationStatusLabel);
+            _validationStatusLabel.Click += ShowValidationDialog;
+            statusStrip1.Items.Add(_validationStatusLabel);
         }
 
         private void SetupCommandManager()
         {
-            commandManager.StateChanged += (s, e) => UpdateUndoRedoMenuItems();
+            _commandManager.StateChanged += (s, e) => UpdateUndoRedoMenuItems();
             UpdateUndoRedoMenuItems();
         }
 
         private void SetupRecentFiles()
         {
-            recentFilesManager.RecentFilesChanged += (s, e) => UpdateRecentFilesMenu();
+            _recentFilesManager.RecentFilesChanged += (s, e) => UpdateRecentFilesMenu();
             UpdateRecentFilesMenu();
         }
 
@@ -172,34 +172,34 @@ namespace IniEdit.GUI
             if (saveAsIndex >= 0)
             {
                 fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 1, new ToolStripSeparator());
-                recentFilesMenuItem = new ToolStripMenuItem("Recent &Files");
-                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 2, recentFilesMenuItem);
+                _recentFilesMenuItem = new ToolStripMenuItem("Recent &Files");
+                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 2, _recentFilesMenuItem);
             }
 
             // Add Edit menu
             var editMenu = new ToolStripMenuItem("&Edit");
 
             // Undo/Redo
-            undoMenuItem = new ToolStripMenuItem("&Undo");
-            undoMenuItem.ShortcutKeys = Keys.Control | Keys.Z;
-            undoMenuItem.Click += Undo;
+            _undoMenuItem = new ToolStripMenuItem("&Undo");
+            _undoMenuItem.ShortcutKeys = Keys.Control | Keys.Z;
+            _undoMenuItem.Click += Undo;
 
-            redoMenuItem = new ToolStripMenuItem("&Redo");
-            redoMenuItem.ShortcutKeys = Keys.Control | Keys.Y;
-            redoMenuItem.Click += Redo;
+            _redoMenuItem = new ToolStripMenuItem("&Redo");
+            _redoMenuItem.ShortcutKeys = Keys.Control | Keys.Y;
+            _redoMenuItem.Click += Redo;
 
             // Copy/Cut/Paste
-            copyMenuItem = new ToolStripMenuItem("&Copy");
-            copyMenuItem.ShortcutKeys = Keys.Control | Keys.C;
-            copyMenuItem.Click += Copy;
+            _copyMenuItem = new ToolStripMenuItem("&Copy");
+            _copyMenuItem.ShortcutKeys = Keys.Control | Keys.C;
+            _copyMenuItem.Click += Copy;
 
-            cutMenuItem = new ToolStripMenuItem("Cu&t");
-            cutMenuItem.ShortcutKeys = Keys.Control | Keys.X;
-            cutMenuItem.Click += Cut;
+            _cutMenuItem = new ToolStripMenuItem("Cu&t");
+            _cutMenuItem.ShortcutKeys = Keys.Control | Keys.X;
+            _cutMenuItem.Click += Cut;
 
-            pasteMenuItem = new ToolStripMenuItem("&Paste");
-            pasteMenuItem.ShortcutKeys = Keys.Control | Keys.V;
-            pasteMenuItem.Click += Paste;
+            _pasteMenuItem = new ToolStripMenuItem("&Paste");
+            _pasteMenuItem.ShortcutKeys = Keys.Control | Keys.V;
+            _pasteMenuItem.Click += Paste;
 
             // Section menu
             var sectionMenu = new ToolStripMenuItem("Section");
@@ -264,12 +264,12 @@ namespace IniEdit.GUI
 
             editMenu.DropDownItems.AddRange(new ToolStripItem[]
             {
-                undoMenuItem,
-                redoMenuItem,
+                _undoMenuItem,
+                _redoMenuItem,
                 new ToolStripSeparator(),
-                copyMenuItem,
-                cutMenuItem,
-                pasteMenuItem,
+                _copyMenuItem,
+                _cutMenuItem,
+                _pasteMenuItem,
                 new ToolStripSeparator(),
                 findReplaceMenu,
                 new ToolStripSeparator(),
@@ -317,12 +317,12 @@ namespace IniEdit.GUI
 
         private void RefreshSectionList()
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
 
             sectionView.Items.Clear();
             sectionView.Items.Add(GetGlobalSectionName());
-            foreach (var section in documentConfig)
+            foreach (var section in _documentConfig)
             {
                 sectionView.Items.Add(section.Name);
             }
@@ -371,44 +371,44 @@ namespace IniEdit.GUI
             string selectedKey = propertyView.SelectedItems.Count > 0 ? propertyView.SelectedItems[0].Text : "-";
             keyStatusLabel.Text = $"Keys: {currentKey}/{totalKeys} [{selectedKey}]";
 
-            string filePath = string.IsNullOrEmpty(currentFilePath) ? "-" : currentFilePath;
+            string filePath = string.IsNullOrEmpty(_currentFilePath) ? "-" : _currentFilePath;
             filePathStatusLabel.Text = $"File: {filePath}";
 
-            if (encodingStatusLabel != null)
+            if (_encodingStatusLabel != null)
             {
-                encodingStatusLabel.Text = $"Encoding: {EncodingHelper.GetEncodingName(currentEncoding)}";
+                _encodingStatusLabel.Text = $"Encoding: {EncodingHelper.GetEncodingName(_currentEncoding)}";
             }
 
-            if (validationStatusLabel != null && documentConfig != null)
+            if (_validationStatusLabel != null && _documentConfig != null)
             {
                 if (_statisticsDirty)
                 {
-                    _cachedStatistics = ValidationHelper.GetStatistics(documentConfig);
+                    _cachedStatistics = ValidationHelper.GetStatistics(_documentConfig);
                     _statisticsDirty = false;
                 }
 
                 if (_cachedStatistics!.ValidationErrors > 0)
                 {
-                    validationStatusLabel.Text = $"⚠ {_cachedStatistics.ValidationErrors} validation error(s)";
-                    validationStatusLabel.ForeColor = Color.Red;
-                    validationStatusLabel.IsLink = true;
+                    _validationStatusLabel.Text = $"⚠ {_cachedStatistics.ValidationErrors} validation error(s)";
+                    _validationStatusLabel.ForeColor = Color.Red;
+                    _validationStatusLabel.IsLink = true;
                 }
                 else
                 {
-                    validationStatusLabel.Text = "✓ No errors";
-                    validationStatusLabel.ForeColor = Color.Green;
-                    validationStatusLabel.IsLink = false;
+                    _validationStatusLabel.Text = "✓ No errors";
+                    _validationStatusLabel.ForeColor = Color.Green;
+                    _validationStatusLabel.IsLink = false;
                 }
             }
         }
 
         private void SetupInlineCellEditor()
         {
-            inlineCellEditBox.Visible = false;
-            inlineCellEditBox.BorderStyle = BorderStyle.FixedSingle;
-            inlineCellEditBox.KeyPress += OnInlineCellEditorKeyPress;
-            inlineCellEditBox.LostFocus += OnInlineCellEditorLostFocus;
-            propertyView.Controls.Add(inlineCellEditBox);
+            _inlineCellEditBox.Visible = false;
+            _inlineCellEditBox.BorderStyle = BorderStyle.FixedSingle;
+            _inlineCellEditBox.KeyPress += OnInlineCellEditorKeyPress;
+            _inlineCellEditBox.LostFocus += OnInlineCellEditorLostFocus;
+            propertyView.Controls.Add(_inlineCellEditBox);
         }
 
         private void BeginInlineCellEdit(Point clientPoint)
@@ -417,14 +417,14 @@ namespace IniEdit.GUI
             if (hitTest.SubItem != null)
             {
                 Rectangle subItemRect = hitTest.SubItem.Bounds;
-                currentEditingCell = hitTest.SubItem;
+                _currentEditingCell = hitTest.SubItem;
 
-                inlineCellEditBox.Location = new Point(subItemRect.Left, subItemRect.Top);
-                inlineCellEditBox.Size = new Size(subItemRect.Width, subItemRect.Height);
-                inlineCellEditBox.Text = currentEditingCell.Text;
-                inlineCellEditBox.Visible = true;
-                inlineCellEditBox.Focus();
-                inlineCellEditBox.SelectAll();
+                _inlineCellEditBox.Location = new Point(subItemRect.Left, subItemRect.Top);
+                _inlineCellEditBox.Size = new Size(subItemRect.Width, subItemRect.Height);
+                _inlineCellEditBox.Text = _currentEditingCell.Text;
+                _inlineCellEditBox.Visible = true;
+                _inlineCellEditBox.Focus();
+                _inlineCellEditBox.SelectAll();
             }
         }
 
@@ -436,12 +436,12 @@ namespace IniEdit.GUI
 
         private void CommitInlineCellEdit()
         {
-            if (currentEditingCell != null && propertyView.SelectedItems.Count > 0)
+            if (_currentEditingCell != null && propertyView.SelectedItems.Count > 0)
             {
                 ListViewItem currentItem = propertyView.SelectedItems[0];
-                bool isKeyColumn = currentEditingCell == currentItem.SubItems[0];
-                string oldValue = currentEditingCell.Text;
-                string newValue = inlineCellEditBox.Text;
+                bool isKeyColumn = _currentEditingCell == currentItem.SubItems[0];
+                string oldValue = _currentEditingCell.Text;
+                string newValue = _inlineCellEditBox.Text;
 
                 if (isKeyColumn)
                 {
@@ -449,7 +449,7 @@ namespace IniEdit.GUI
                     {
                         MessageBox.Show($"Key '{newValue}' already exists in this section!",
                             "Duplicate Key", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        inlineCellEditBox.Focus();
+                        _inlineCellEditBox.Focus();
                         return;
                     }
                     UpdateKey(oldValue, newValue);
@@ -460,16 +460,16 @@ namespace IniEdit.GUI
                     UpdateValue(key, newValue);
                 }
 
-                currentEditingCell.Text = newValue;
-                inlineCellEditBox.Visible = false;
-                currentEditingCell = null;
+                _currentEditingCell.Text = newValue;
+                _inlineCellEditBox.Visible = false;
+                _currentEditingCell = null;
                 SetDirty();
             }
         }
 
         private void AddSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
 
             using (var dialog = new InputDialog("Add Section", "Enter section name:"))
@@ -483,14 +483,14 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    if (documentConfig.HasSection(sectionName) ||
+                    if (_documentConfig.HasSection(sectionName) ||
                         sectionName == GetGlobalSectionName())
                     {
                         MessageBox.Show("Section already exists.");
                         return;
                     }
 
-                    documentConfig.AddSection(new IniEdit.Section(sectionName));
+                    _documentConfig.AddSection(new IniEdit.Section(sectionName));
                     RefreshSectionList();
                     SetDirty();
                 }
@@ -499,7 +499,7 @@ namespace IniEdit.GUI
 
         private void EditSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
             if (sectionView.SelectedItem == null)
                 return;
@@ -527,19 +527,19 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    if (documentConfig.HasSection(newName) && newName != selectedSection)
+                    if (_documentConfig.HasSection(newName) && newName != selectedSection)
                     {
                         MessageBox.Show("Section already exists.");
                         return;
                     }
 
                     var section = GetSelectedSection();
-                    documentConfig.RemoveSection(selectedSection);
+                    _documentConfig.RemoveSection(selectedSection);
                     var newSection = new IniEdit.Section(newName);
                     newSection.AddPropertyRange(section.GetProperties());
                     newSection.PreComments.AddRange(section.PreComments);
                     newSection.Comment = section.Comment;
-                    documentConfig.AddSection(newSection);
+                    _documentConfig.AddSection(newSection);
                     RefreshSectionList();
                     SetDirty();
                 }
@@ -548,7 +548,7 @@ namespace IniEdit.GUI
 
         private void DeleteSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
             if (sectionView.SelectedItem == null)
                 return;
@@ -565,12 +565,12 @@ namespace IniEdit.GUI
             {
                 if (selectedSection == GetGlobalSectionName())
                 {
-                    documentConfig.DefaultSection.Clear();
+                    _documentConfig.DefaultSection.Clear();
                     RefreshKeyValueList(selectedSection);
                 }
                 else
                 {
-                    documentConfig.RemoveSection(selectedSection);
+                    _documentConfig.RemoveSection(selectedSection);
                     RefreshSectionList();
                     SetDirty();
                     // Select first section after deletion
@@ -585,7 +585,7 @@ namespace IniEdit.GUI
 
         private void MoveSectionUp(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
             if (sectionView.SelectedItem == null)
                 return;
@@ -594,9 +594,9 @@ namespace IniEdit.GUI
 
             int currentIndex = sectionView.SelectedIndex - 1;
             // ���� ��ġ ����
-            var section = documentConfig[currentIndex];
-            documentConfig.RemoveSection(currentIndex);
-            documentConfig.InsertSection(currentIndex - 1, section);
+            var section = _documentConfig[currentIndex];
+            _documentConfig.RemoveSection(currentIndex);
+            _documentConfig.InsertSection(currentIndex - 1, section);
 
             RefreshSectionList();
             sectionView.SelectedIndex = currentIndex;
@@ -605,7 +605,7 @@ namespace IniEdit.GUI
 
         private void MoveSectionDown(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
             if (sectionView.SelectedItem == null)
                 return;
@@ -615,9 +615,9 @@ namespace IniEdit.GUI
 
             int currentIndex = sectionView.SelectedIndex - 1;
             // ���� ��ġ ����
-            var section = documentConfig[currentIndex];
-            documentConfig.RemoveSection(currentIndex);
-            documentConfig.InsertSection(currentIndex + 1, section);
+            var section = _documentConfig[currentIndex];
+            _documentConfig.RemoveSection(currentIndex);
+            _documentConfig.InsertSection(currentIndex + 1, section);
 
             RefreshSectionList();
             sectionView.SelectedIndex = currentIndex;
@@ -626,7 +626,7 @@ namespace IniEdit.GUI
 
         private void DuplicateSection(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
             if (sectionView.SelectedItem == null)
                 return;
@@ -644,7 +644,7 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    if (documentConfig.HasSection(newName) ||
+                    if (_documentConfig.HasSection(newName) ||
                         newName == GetGlobalSectionName())
                     {
                         MessageBox.Show("Section already exists.");
@@ -665,7 +665,7 @@ namespace IniEdit.GUI
                     newSection.PreComments.AddRange(originalSection.PreComments);
                     newSection.Comment = originalSection.Comment?.Clone();
 
-                    documentConfig.AddSection(newSection);
+                    _documentConfig.AddSection(newSection);
                     RefreshSectionList();
                     SetDirty();
                     sectionView.SelectedItem = newName;
@@ -676,11 +676,11 @@ namespace IniEdit.GUI
 
         private void SortSections(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
             string? selectedSection = sectionView.SelectedItem?.ToString();
 
-            documentConfig.SortSectionsByName();
+            _documentConfig.SortSectionsByName();
 
             RefreshSectionList();
             SetDirty();
@@ -913,15 +913,15 @@ namespace IniEdit.GUI
             }
             else if (e.KeyChar == (char)Keys.Escape)
             {
-                inlineCellEditBox.Visible = false;
-                currentEditingCell = null;
+                _inlineCellEditBox.Visible = false;
+                _currentEditingCell = null;
                 e.Handled = true;
             }
         }
 
         private void OnInlineCellEditorLostFocus(object? sender, EventArgs e)
         {
-            if (inlineCellEditBox.Visible)
+            if (_inlineCellEditBox.Visible)
             {
                 CommitInlineCellEdit();
             }
@@ -934,7 +934,7 @@ namespace IniEdit.GUI
 
             try
             {
-                isUpdatingCommentsFromCode = true;
+                _isUpdatingCommentsFromCode = true;
 
                 var selectedSection = GetSelectedSection();
 
@@ -957,7 +957,7 @@ namespace IniEdit.GUI
             }
             finally
             {
-                isUpdatingCommentsFromCode = false;
+                _isUpdatingCommentsFromCode = false;
             }
         }
 
@@ -973,7 +973,7 @@ namespace IniEdit.GUI
                 ListViewHitTestInfo hitTest = propertyView.HitTest(propertyView.PointToClient(Cursor.Position));
                 try
                 {
-                    isUpdatingCommentsFromCode = true;
+                    _isUpdatingCommentsFromCode = true;
 
                     if (hitTest.Item != null)
                     {
@@ -987,7 +987,7 @@ namespace IniEdit.GUI
                 }
                 finally
                 {
-                    isUpdatingCommentsFromCode = false;
+                    _isUpdatingCommentsFromCode = false;
                 }
             }
         }
@@ -1044,7 +1044,7 @@ namespace IniEdit.GUI
 
         private void OnPreCommentsChanged(object? sender, EventArgs e)
         {
-            if (isUpdatingCommentsFromCode)
+            if (_isUpdatingCommentsFromCode)
                 return;
 
             if (propertyView.SelectedItems.Count > 0)
@@ -1079,7 +1079,7 @@ namespace IniEdit.GUI
 
         private void OnInlineCommentChanged(object? sender, EventArgs e)
         {
-            if (isUpdatingCommentsFromCode)
+            if (_isUpdatingCommentsFromCode)
                 return;
 
             if (propertyView.SelectedItems.Count > 0)
@@ -1133,9 +1133,9 @@ namespace IniEdit.GUI
             if (!PromptSaveChanges())
                 return;
 
-            currentFilePath = "";
-            documentConfig = new();
-            commandManager.Clear(); // Clear undo/redo history
+            _currentFilePath = "";
+            _documentConfig = new();
+            _commandManager.Clear(); // Clear undo/redo history
 
             RefreshSectionList();
             if (sectionView.Items.Count > 0)
@@ -1164,16 +1164,16 @@ namespace IniEdit.GUI
 
         private async Task LoadIniFileAsync(string filename)
         {
-            currentFilePath = filename;
+            _currentFilePath = filename;
             sectionView.Items.Clear();
 
             try
             {
                 // Detect file encoding
-                currentEncoding = EncodingHelper.DetectEncoding(filename);
+                _currentEncoding = EncodingHelper.DetectEncoding(filename);
 
                 // Use async I/O with current options and detected encoding
-                documentConfig = await IniConfigManager.LoadAsync(filename, currentEncoding, configOptions);
+                _documentConfig = await IniConfigManager.LoadAsync(filename, _currentEncoding, _configOptions);
 
                 RefreshSectionList();
 
@@ -1185,20 +1185,20 @@ namespace IniEdit.GUI
 
                 RefreshStatusBar();
                 SetDirty(false);
-                commandManager.Clear(); // Clear undo/redo history
-                recentFilesManager.AddRecentFile(filename); // Add to recent files
+                _commandManager.Clear(); // Clear undo/redo history
+                _recentFilesManager.AddRecentFile(filename); // Add to recent files
 
                 // Show parsing errors if any
-                if (documentConfig.ParsingErrors.Count > 0)
+                if (_documentConfig.ParsingErrors.Count > 0)
                 {
-                    var errorMsg = $"File loaded with {documentConfig.ParsingErrors.Count} parsing error(s):\n\n";
-                    foreach (var error in documentConfig.ParsingErrors.Take(5))
+                    var errorMsg = $"File loaded with {_documentConfig.ParsingErrors.Count} parsing error(s):\n\n";
+                    foreach (var error in _documentConfig.ParsingErrors.Take(5))
                     {
                         errorMsg += $"Line {error.LineNumber}: {error.Reason}\n";
                     }
-                    if (documentConfig.ParsingErrors.Count > 5)
+                    if (_documentConfig.ParsingErrors.Count > 5)
                     {
-                        errorMsg += $"\n... and {documentConfig.ParsingErrors.Count - 5} more error(s)";
+                        errorMsg += $"\n... and {_documentConfig.ParsingErrors.Count - 5} more error(s)";
                     }
                     MessageBox.Show(errorMsg, "Parsing Warnings",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1220,13 +1220,13 @@ namespace IniEdit.GUI
 
         private async void SaveFile(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
             {
-                MessageBox.Show($"Error saving file: documentConfig invalid", "Error",
+                MessageBox.Show($"Error saving file: _documentConfig invalid", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            if (string.IsNullOrEmpty(currentFilePath))
+            if (string.IsNullOrEmpty(_currentFilePath))
             {
                 SaveAsFile(sender, e);
                 return;
@@ -1234,7 +1234,7 @@ namespace IniEdit.GUI
 
             try
             {
-                await IniConfigManager.SaveAsync(currentFilePath, documentConfig);
+                await IniConfigManager.SaveAsync(_currentFilePath, _documentConfig);
                 SetDirty(false);
                 MessageBox.Show("File saved successfully!", "Save",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1248,9 +1248,9 @@ namespace IniEdit.GUI
 
         private async void SaveAsFile(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
             {
-                MessageBox.Show($"Error saving file: documentConfig invalid", "Error",
+                MessageBox.Show($"Error saving file: _documentConfig invalid", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -1269,8 +1269,8 @@ namespace IniEdit.GUI
 
             try
             {
-                currentFilePath = saveFileDialog.FileName;
-                await IniConfigManager.SaveAsync(currentFilePath, documentConfig);
+                _currentFilePath = saveFileDialog.FileName;
+                await IniConfigManager.SaveAsync(_currentFilePath, _documentConfig);
                 SetDirty(false);
                 RefreshStatusBar();
                 MessageBox.Show("File saved successfully!", "Save",
@@ -1297,7 +1297,7 @@ namespace IniEdit.GUI
 
         private string GetGlobalSectionName()
         {
-            return documentConfig?.DefaultSection.Name ?? string.Empty;
+            return _documentConfig?.DefaultSection.Name ?? string.Empty;
         }
 
         private Section GetSelectedSection()
@@ -1310,35 +1310,35 @@ namespace IniEdit.GUI
         {
             if (string.IsNullOrEmpty(sectionName))
                 throw new ArgumentNullException(nameof(sectionName));
-            if (documentConfig == null)
-                throw new InvalidOperationException("documentConfig is null");
+            if (_documentConfig == null)
+                throw new InvalidOperationException("_documentConfig is null");
 
             if (sectionName == GetGlobalSectionName())
             {
-                return documentConfig.DefaultSection;
+                return _documentConfig.DefaultSection;
             }
-            return documentConfig[sectionName];
+            return _documentConfig[sectionName];
         }
         #endregion
 
         #region Dirty Flag Management
         private void SetDirty(bool dirty = true)
         {
-            isDirty = dirty;
+            _isDirty = dirty;
             _statisticsDirty = true; // Mark statistics as needing recalculation
             UpdateTitle();
         }
 
         private void UpdateTitle()
         {
-            string fileName = string.IsNullOrEmpty(currentFilePath) ? "Untitled" : Path.GetFileName(currentFilePath);
-            string dirtyMarker = isDirty ? "*" : "";
+            string fileName = string.IsNullOrEmpty(_currentFilePath) ? "Untitled" : Path.GetFileName(_currentFilePath);
+            string dirtyMarker = _isDirty ? "*" : "";
             Text = $"{fileName}{dirtyMarker} - IniEdit Editor";
         }
 
         private bool PromptSaveChanges()
         {
-            if (!isDirty)
+            if (!_isDirty)
                 return true;
 
             var result = MessageBox.Show(
@@ -1350,7 +1350,7 @@ namespace IniEdit.GUI
             if (result == DialogResult.Yes)
             {
                 SaveFile(null, EventArgs.Empty);
-                return !isDirty; // Return false if save failed
+                return !_isDirty; // Return false if save failed
             }
             else if (result == DialogResult.No)
             {
@@ -1375,11 +1375,11 @@ namespace IniEdit.GUI
         #region Settings
         private void OpenSettings(object? sender, EventArgs e)
         {
-            using (var dialog = new SettingsDialog(configOptions))
+            using (var dialog = new SettingsDialog(_configOptions))
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    configOptions = dialog.Options;
+                    _configOptions = dialog.Options;
                     MessageBox.Show("Settings saved. New settings will be applied when loading files.",
                         "Settings", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
@@ -1390,16 +1390,16 @@ namespace IniEdit.GUI
         #region Find and Replace
         private void OpenFindReplace(object? sender, EventArgs e)
         {
-            if (findReplaceDialog == null || findReplaceDialog.IsDisposed)
+            if (_findReplaceDialog == null || _findReplaceDialog.IsDisposed)
             {
-                findReplaceDialog = new FindReplaceDialog();
-                findReplaceDialog.FindNextClicked += FindNext;
-                findReplaceDialog.ReplaceClicked += Replace;
-                findReplaceDialog.ReplaceAllClicked += ReplaceAll;
+                _findReplaceDialog = new FindReplaceDialog();
+                _findReplaceDialog.FindNextClicked += FindNext;
+                _findReplaceDialog.ReplaceClicked += Replace;
+                _findReplaceDialog.ReplaceAllClicked += ReplaceAll;
             }
 
-            findReplaceDialog.Show();
-            findReplaceDialog.BringToFront();
+            _findReplaceDialog.Show();
+            _findReplaceDialog.BringToFront();
         }
 
         private bool IsMatch(string text, string pattern, bool matchCase, bool useRegex)
@@ -1425,19 +1425,19 @@ namespace IniEdit.GUI
 
         private void FindNext(object? sender, EventArgs e)
         {
-            if (findReplaceDialog == null || documentConfig == null)
+            if (_findReplaceDialog == null || _documentConfig == null)
                 return;
 
-            string findText = findReplaceDialog.FindText;
-            bool matchCase = findReplaceDialog.MatchCase;
-            bool useRegex = findReplaceDialog.UseRegex;
+            string findText = _findReplaceDialog.FindText;
+            bool matchCase = _findReplaceDialog.MatchCase;
+            bool useRegex = _findReplaceDialog.UseRegex;
 
             // Start from current position
-            int startSectionIndex = lastSearchSectionIndex >= 0 ? lastSearchSectionIndex : 0;
-            int startPropertyIndex = lastSearchPropertyIndex + 1;
+            int startSectionIndex = _lastSearchSectionIndex >= 0 ? _lastSearchSectionIndex : 0;
+            int startPropertyIndex = _lastSearchPropertyIndex + 1;
 
             // Search sections
-            if (findReplaceDialog.SearchSections)
+            if (_findReplaceDialog.SearchSections)
             {
                 for (int i = startSectionIndex; i < sectionView.Items.Count; i++)
                 {
@@ -1445,9 +1445,9 @@ namespace IniEdit.GUI
                     if (IsMatch(sectionName, findText, matchCase, useRegex))
                     {
                         sectionView.SelectedIndex = i;
-                        lastSearchSectionIndex = i;
-                        lastSearchPropertyIndex = -1;
-                        findReplaceDialog.SetStatus($"Found in section: {sectionName}");
+                        _lastSearchSectionIndex = i;
+                        _lastSearchPropertyIndex = -1;
+                        _findReplaceDialog.SetStatus($"Found in section: {sectionName}");
                         return;
                     }
                 }
@@ -1467,12 +1467,12 @@ namespace IniEdit.GUI
                     bool found = false;
                     string location = "";
 
-                    if (findReplaceDialog.SearchKeys && IsMatch(prop.Name, findText, matchCase, useRegex))
+                    if (_findReplaceDialog.SearchKeys && IsMatch(prop.Name, findText, matchCase, useRegex))
                     {
                         found = true;
                         location = "key";
                     }
-                    else if (findReplaceDialog.SearchValues && IsMatch(prop.Value, findText, matchCase, useRegex))
+                    else if (_findReplaceDialog.SearchValues && IsMatch(prop.Value, findText, matchCase, useRegex))
                     {
                         found = true;
                         location = "value";
@@ -1483,28 +1483,28 @@ namespace IniEdit.GUI
                         sectionView.SelectedIndex = i;
                         propertyView.Items[j].Selected = true;
                         propertyView.Items[j].EnsureVisible();
-                        lastSearchSectionIndex = i;
-                        lastSearchPropertyIndex = j;
-                        findReplaceDialog.SetStatus($"Found in {location}: {prop.Name}");
+                        _lastSearchSectionIndex = i;
+                        _lastSearchPropertyIndex = j;
+                        _findReplaceDialog.SetStatus($"Found in {location}: {prop.Name}");
                         return;
                     }
                 }
             }
 
             // Not found, reset and notify
-            lastSearchSectionIndex = -1;
-            lastSearchPropertyIndex = -1;
-            findReplaceDialog.SetStatus("No more matches found.", true);
+            _lastSearchSectionIndex = -1;
+            _lastSearchPropertyIndex = -1;
+            _findReplaceDialog.SetStatus("No more matches found.", true);
         }
 
         private void Replace(object? sender, EventArgs e)
         {
-            if (findReplaceDialog == null || documentConfig == null)
+            if (_findReplaceDialog == null || _documentConfig == null)
                 return;
 
             if (propertyView.SelectedItems.Count == 0)
             {
-                findReplaceDialog.SetStatus("Please select a property first.", true);
+                _findReplaceDialog.SetStatus("Please select a property first.", true);
                 return;
             }
 
@@ -1513,14 +1513,14 @@ namespace IniEdit.GUI
             string value = selectedItem.SubItems[1].Text;
             var selectedSection = GetSelectedSection();
 
-            string findText = findReplaceDialog.FindText;
-            string replaceText = findReplaceDialog.ReplaceText;
-            bool matchCase = findReplaceDialog.MatchCase;
-            bool useRegex = findReplaceDialog.UseRegex;
+            string findText = _findReplaceDialog.FindText;
+            string replaceText = _findReplaceDialog.ReplaceText;
+            bool matchCase = _findReplaceDialog.MatchCase;
+            bool useRegex = _findReplaceDialog.UseRegex;
 
             bool replaced = false;
 
-            if (findReplaceDialog.SearchKeys && IsMatch(key, findText, matchCase, useRegex))
+            if (_findReplaceDialog.SearchKeys && IsMatch(key, findText, matchCase, useRegex))
             {
                 string newKey = ReplaceString(key, findText, replaceText, matchCase, useRegex);
                 if (newKey != key && !selectedSection.HasProperty(newKey))
@@ -1532,7 +1532,7 @@ namespace IniEdit.GUI
                 }
             }
 
-            if (findReplaceDialog.SearchValues && IsMatch(value, findText, matchCase, useRegex))
+            if (_findReplaceDialog.SearchValues && IsMatch(value, findText, matchCase, useRegex))
             {
                 string newValue = ReplaceString(value, findText, replaceText, matchCase, useRegex);
                 UpdateValue(key, newValue);
@@ -1543,24 +1543,24 @@ namespace IniEdit.GUI
 
             if (replaced)
             {
-                findReplaceDialog.SetStatus("Replaced.");
+                _findReplaceDialog.SetStatus("Replaced.");
                 FindNext(sender, e); // Move to next match
             }
             else
             {
-                findReplaceDialog.SetStatus("No match in selection.", true);
+                _findReplaceDialog.SetStatus("No match in selection.", true);
             }
         }
 
         private void ReplaceAll(object? sender, EventArgs e)
         {
-            if (findReplaceDialog == null || documentConfig == null)
+            if (_findReplaceDialog == null || _documentConfig == null)
                 return;
 
-            string findText = findReplaceDialog.FindText;
-            string replaceText = findReplaceDialog.ReplaceText;
-            bool matchCase = findReplaceDialog.MatchCase;
-            bool useRegex = findReplaceDialog.UseRegex;
+            string findText = _findReplaceDialog.FindText;
+            string replaceText = _findReplaceDialog.ReplaceText;
+            bool matchCase = _findReplaceDialog.MatchCase;
+            bool useRegex = _findReplaceDialog.UseRegex;
             int replaceCount = 0;
             bool anyModified = false; // Track if any modification occurred
 
@@ -1575,7 +1575,7 @@ namespace IniEdit.GUI
                     var prop = section[i];
                     bool modified = false;
 
-                    if (findReplaceDialog.SearchKeys)
+                    if (_findReplaceDialog.SearchKeys)
                     {
                         string newKey = ReplaceString(prop.Name, findText, replaceText, matchCase, useRegex);
                         if (newKey != prop.Name && !section.HasProperty(newKey))
@@ -1591,7 +1591,7 @@ namespace IniEdit.GUI
                         }
                     }
 
-                    if (findReplaceDialog.SearchValues)
+                    if (_findReplaceDialog.SearchValues)
                     {
                         string newValue = ReplaceString(prop.Value, findText, replaceText, matchCase, useRegex);
                         if (newValue != prop.Value)
@@ -1619,9 +1619,9 @@ namespace IniEdit.GUI
                 }
             }
 
-            findReplaceDialog.SetStatus($"Replaced {replaceCount} occurrence(s).");
-            lastSearchSectionIndex = -1;
-            lastSearchPropertyIndex = -1;
+            _findReplaceDialog.SetStatus($"Replaced {replaceCount} occurrence(s).");
+            _lastSearchSectionIndex = -1;
+            _lastSearchPropertyIndex = -1;
         }
 
         private string ReplaceString(string input, string find, string replace, bool matchCase, bool useRegex)
@@ -1662,37 +1662,37 @@ namespace IniEdit.GUI
 
         private void Undo(object? sender, EventArgs e)
         {
-            if (commandManager.CanUndo)
+            if (_commandManager.CanUndo)
             {
-                commandManager.Undo();
+                _commandManager.Undo();
                 SetDirty();
             }
         }
 
         private void Redo(object? sender, EventArgs e)
         {
-            if (commandManager.CanRedo)
+            if (_commandManager.CanRedo)
             {
-                commandManager.Redo();
+                _commandManager.Redo();
                 SetDirty();
             }
         }
 
         private void UpdateUndoRedoMenuItems()
         {
-            if (undoMenuItem != null)
+            if (_undoMenuItem != null)
             {
-                undoMenuItem.Enabled = commandManager.CanUndo;
-                undoMenuItem.Text = commandManager.CanUndo
-                    ? $"&Undo {commandManager.UndoDescription}"
+                _undoMenuItem.Enabled = _commandManager.CanUndo;
+                _undoMenuItem.Text = _commandManager.CanUndo
+                    ? $"&Undo {_commandManager.UndoDescription}"
                     : "&Undo";
             }
 
-            if (redoMenuItem != null)
+            if (_redoMenuItem != null)
             {
-                redoMenuItem.Enabled = commandManager.CanRedo;
-                redoMenuItem.Text = commandManager.CanRedo
-                    ? $"&Redo {commandManager.RedoDescription}"
+                _redoMenuItem.Enabled = _commandManager.CanRedo;
+                _redoMenuItem.Text = _commandManager.CanRedo
+                    ? $"&Redo {_commandManager.RedoDescription}"
                     : "&Redo";
             }
         }
@@ -1750,7 +1750,7 @@ namespace IniEdit.GUI
 
         private void Paste(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
                 return;
 
             // Try to paste section
@@ -1762,7 +1762,7 @@ namespace IniEdit.GUI
                     // Generate unique name if needed
                     string newName = section.Name;
                     int counter = 1;
-                    while (documentConfig.HasSection(newName))
+                    while (_documentConfig.HasSection(newName))
                     {
                         newName = $"{section.Name}_{counter++}";
                     }
@@ -1773,13 +1773,13 @@ namespace IniEdit.GUI
                     newSection.PreComments.AddRange(section.PreComments);
                     newSection.Comment = section.Comment;
 
-                    int index = sectionView.SelectedIndex >= 0 ? sectionView.SelectedIndex : documentConfig.SectionCount;
-                    var command = new AddSectionCommand(documentConfig, newSection, index, () =>
+                    int index = sectionView.SelectedIndex >= 0 ? sectionView.SelectedIndex : _documentConfig.SectionCount;
+                    var command = new AddSectionCommand(_documentConfig, newSection, index, () =>
                     {
                         RefreshSectionList();
                         RefreshStatusBar();
                     });
-                    commandManager.ExecuteCommand(command);
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
                 }
                 return;
@@ -1821,7 +1821,7 @@ namespace IniEdit.GUI
                         RefreshKeyValueList(sectionName);
                         RefreshStatusBar();
                     });
-                    commandManager.ExecuteCommand(command);
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
                 }
             }
@@ -1833,18 +1833,18 @@ namespace IniEdit.GUI
 
         private void UpdateRecentFilesMenu()
         {
-            if (recentFilesMenuItem == null)
+            if (_recentFilesMenuItem == null)
                 return;
 
-            recentFilesMenuItem.DropDownItems.Clear();
+            _recentFilesMenuItem.DropDownItems.Clear();
 
-            var recentFiles = recentFilesManager.RecentFiles;
+            var recentFiles = _recentFilesManager.RecentFiles;
 
             if (recentFiles.Count == 0)
             {
                 var emptyItem = new ToolStripMenuItem("(No recent files)");
                 emptyItem.Enabled = false;
-                recentFilesMenuItem.DropDownItems.Add(emptyItem);
+                _recentFilesMenuItem.DropDownItems.Add(emptyItem);
                 return;
             }
 
@@ -1868,21 +1868,21 @@ namespace IniEdit.GUI
                         {
                             MessageBox.Show($"File not found: {path}", "Error",
                                 MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            recentFilesManager.RemoveRecentFile(path);
+                            _recentFilesManager.RemoveRecentFile(path);
                         }
                     }
                 };
-                recentFilesMenuItem.DropDownItems.Add(menuItem);
+                _recentFilesMenuItem.DropDownItems.Add(menuItem);
             }
 
-            recentFilesMenuItem.DropDownItems.Add(new ToolStripSeparator());
+            _recentFilesMenuItem.DropDownItems.Add(new ToolStripSeparator());
 
             var clearItem = new ToolStripMenuItem("&Clear Recent Files");
             clearItem.Click += (s, e) =>
             {
-                recentFilesManager.ClearRecentFiles();
+                _recentFilesManager.ClearRecentFiles();
             };
-            recentFilesMenuItem.DropDownItems.Add(clearItem);
+            _recentFilesMenuItem.DropDownItems.Add(clearItem);
         }
 
         #endregion
@@ -2077,14 +2077,14 @@ namespace IniEdit.GUI
 
         private void ShowValidationDialog(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
             {
                 MessageBox.Show("No document loaded.", "Validation",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var errors = ValidationHelper.ValidateDocument(documentConfig);
+            var errors = ValidationHelper.ValidateDocument(_documentConfig);
             using (var dialog = new ValidationDialog(errors))
             {
                 dialog.ShowDialog(this);
@@ -2093,14 +2093,14 @@ namespace IniEdit.GUI
 
         private void ShowStatisticsDialog(object? sender, EventArgs e)
         {
-            if (documentConfig == null)
+            if (_documentConfig == null)
             {
                 MessageBox.Show("No document loaded.", "Statistics",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var stats = ValidationHelper.GetStatistics(documentConfig);
+            var stats = ValidationHelper.GetStatistics(_documentConfig);
             using (var dialog = new StatisticsDialog(stats))
             {
                 dialog.ShowDialog(this);
@@ -2109,7 +2109,7 @@ namespace IniEdit.GUI
 
         private void ShowSectionStatistics(object? sender, EventArgs e)
         {
-            if (documentConfig == null || sectionView.SelectedIndex < 0)
+            if (_documentConfig == null || sectionView.SelectedIndex < 0)
             {
                 MessageBox.Show("Please select a section first.", "Section Statistics",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -2127,7 +2127,7 @@ namespace IniEdit.GUI
 
         private void ShowEncodingMenu(object? sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(currentFilePath))
+            if (string.IsNullOrEmpty(_currentFilePath))
             {
                 MessageBox.Show("No file is currently open.\n\nPlease open or save a file first.",
                     "Change Encoding", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -2154,7 +2154,7 @@ namespace IniEdit.GUI
 
             var currentLabel = new Label
             {
-                Text = $"Current encoding: {EncodingHelper.GetEncodingName(currentEncoding)}",
+                Text = $"Current encoding: {EncodingHelper.GetEncodingName(_currentEncoding)}",
                 Location = new Point(10, 35),
                 Size = new Size(400, 20),
                 ForeColor = Color.Blue
@@ -2243,11 +2243,11 @@ namespace IniEdit.GUI
                 try
                 {
                     // Convert file encoding
-                    EncodingHelper.ConvertFileEncoding(currentFilePath, currentEncoding, newEncoding);
-                    currentEncoding = newEncoding;
+                    EncodingHelper.ConvertFileEncoding(_currentFilePath, _currentEncoding, newEncoding);
+                    _currentEncoding = newEncoding;
 
                     // Reload file
-                    LoadFile(currentFilePath);
+                    LoadFile(_currentFilePath);
 
                     MessageBox.Show($"File encoding changed to {EncodingHelper.GetEncodingName(newEncoding)}",
                         "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);

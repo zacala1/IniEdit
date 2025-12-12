@@ -8,13 +8,13 @@ namespace IniEdit.GUI
 {
     public class SettingsDialog : Form
     {
-        private ComboBox duplicateKeyPolicyCombo = null!;
-        private ComboBox duplicateSectionPolicyCombo = null!;
-        private TextBox commentPrefixCharsTextBox = null!;
-        private ComboBox defaultCommentPrefixCombo = null!;
-        private CheckBox collectParsingErrorsCheckBox = null!;
-        private Button okButton = null!;
-        private Button cancelButton = null!;
+        private ComboBox _duplicateKeyPolicyCombo = null!;
+        private ComboBox _duplicateSectionPolicyCombo = null!;
+        private TextBox _commentPrefixCharsTextBox = null!;
+        private ComboBox _defaultCommentPrefixCombo = null!;
+        private CheckBox _collectParsingErrorsCheckBox = null!;
+        private Button _okButton = null!;
+        private Button _cancelButton = null!;
 
         public IniConfigOption Options { get; private set; }
 
@@ -55,13 +55,13 @@ namespace IniEdit.GUI
                 Size = new System.Drawing.Size(labelWidth, 20)
             };
 
-            duplicateKeyPolicyCombo = new ComboBox
+            _duplicateKeyPolicyCombo = new ComboBox
             {
                 Location = new System.Drawing.Point(controlX, y),
                 Size = new System.Drawing.Size(controlWidth, 20),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            duplicateKeyPolicyCombo.Items.AddRange(new object[]
+            _duplicateKeyPolicyCombo.Items.AddRange(new object[]
             {
                 IniConfigOption.DuplicateKeyPolicyType.FirstWin,
                 IniConfigOption.DuplicateKeyPolicyType.LastWin,
@@ -78,13 +78,13 @@ namespace IniEdit.GUI
                 Size = new System.Drawing.Size(labelWidth, 20)
             };
 
-            duplicateSectionPolicyCombo = new ComboBox
+            _duplicateSectionPolicyCombo = new ComboBox
             {
                 Location = new System.Drawing.Point(controlX, y),
                 Size = new System.Drawing.Size(controlWidth, 20),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            duplicateSectionPolicyCombo.Items.AddRange(new object[]
+            _duplicateSectionPolicyCombo.Items.AddRange(new object[]
             {
                 IniConfigOption.DuplicateSectionPolicyType.FirstWin,
                 IniConfigOption.DuplicateSectionPolicyType.LastWin,
@@ -102,7 +102,7 @@ namespace IniEdit.GUI
                 Size = new System.Drawing.Size(labelWidth, 20)
             };
 
-            commentPrefixCharsTextBox = new TextBox
+            _commentPrefixCharsTextBox = new TextBox
             {
                 Location = new System.Drawing.Point(controlX, y),
                 Size = new System.Drawing.Size(controlWidth, 20)
@@ -127,19 +127,19 @@ namespace IniEdit.GUI
                 Size = new System.Drawing.Size(labelWidth, 20)
             };
 
-            defaultCommentPrefixCombo = new ComboBox
+            _defaultCommentPrefixCombo = new ComboBox
             {
                 Location = new System.Drawing.Point(controlX, y),
                 Size = new System.Drawing.Size(controlWidth, 20),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
 
-            commentPrefixCharsTextBox.TextChanged += (s, e) => UpdateDefaultCommentPrefixOptions();
+            _commentPrefixCharsTextBox.TextChanged += (s, e) => UpdateDefaultCommentPrefixOptions();
 
             y += 35;
 
             // Collect Parsing Errors
-            collectParsingErrorsCheckBox = new CheckBox
+            _collectParsingErrorsCheckBox = new CheckBox
             {
                 Text = "Collect Parsing Errors (instead of stopping on first error)",
                 Location = new System.Drawing.Point(20, y),
@@ -174,7 +174,7 @@ namespace IniEdit.GUI
             y += 90;
 
             // Buttons
-            okButton = new Button
+            _okButton = new Button
             {
                 Text = "OK",
                 DialogResult = DialogResult.OK,
@@ -182,7 +182,7 @@ namespace IniEdit.GUI
                 Size = new System.Drawing.Size(90, 30)
             };
 
-            cancelButton = new Button
+            _cancelButton = new Button
             {
                 Text = "Cancel",
                 DialogResult = DialogResult.Cancel,
@@ -190,40 +190,40 @@ namespace IniEdit.GUI
                 Size = new System.Drawing.Size(90, 30)
             };
 
-            okButton.Click += OkButton_Click;
+            _okButton.Click += OkButton_Click;
 
             Controls.AddRange(new Control[]
             {
-                duplicateKeyLabel, duplicateKeyPolicyCombo,
-                duplicateSectionLabel, duplicateSectionPolicyCombo,
-                commentPrefixLabel, commentPrefixCharsTextBox, commentPrefixHint,
-                defaultCommentLabel, defaultCommentPrefixCombo,
-                collectParsingErrorsCheckBox,
+                duplicateKeyLabel, _duplicateKeyPolicyCombo,
+                duplicateSectionLabel, _duplicateSectionPolicyCombo,
+                commentPrefixLabel, _commentPrefixCharsTextBox, commentPrefixHint,
+                defaultCommentLabel, _defaultCommentPrefixCombo,
+                _collectParsingErrorsCheckBox,
                 descriptionPanel,
-                okButton, cancelButton
+                _okButton, _cancelButton
             });
 
-            AcceptButton = okButton;
-            CancelButton = cancelButton;
+            AcceptButton = _okButton;
+            CancelButton = _cancelButton;
         }
 
         private void LoadSettings()
         {
-            duplicateKeyPolicyCombo.SelectedItem = Options.DuplicateKeyPolicy;
-            duplicateSectionPolicyCombo.SelectedItem = Options.DuplicateSectionPolicy;
-            commentPrefixCharsTextBox.Text = string.Join(",", Options.CommentPrefixChars);
-            collectParsingErrorsCheckBox.Checked = Options.CollectParsingErrors;
+            _duplicateKeyPolicyCombo.SelectedItem = Options.DuplicateKeyPolicy;
+            _duplicateSectionPolicyCombo.SelectedItem = Options.DuplicateSectionPolicy;
+            _commentPrefixCharsTextBox.Text = string.Join(",", Options.CommentPrefixChars);
+            _collectParsingErrorsCheckBox.Checked = Options.CollectParsingErrors;
 
             UpdateDefaultCommentPrefixOptions();
-            defaultCommentPrefixCombo.SelectedItem = Options.DefaultCommentPrefixChar;
+            _defaultCommentPrefixCombo.SelectedItem = Options.DefaultCommentPrefixChar;
         }
 
         private void UpdateDefaultCommentPrefixOptions()
         {
-            var currentSelection = defaultCommentPrefixCombo.SelectedItem;
-            defaultCommentPrefixCombo.Items.Clear();
+            var currentSelection = _defaultCommentPrefixCombo.SelectedItem;
+            _defaultCommentPrefixCombo.Items.Clear();
 
-            var chars = commentPrefixCharsTextBox.Text
+            var chars = _commentPrefixCharsTextBox.Text
                 .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.Trim())
                 .Where(s => s.Length == 1)
@@ -232,16 +232,16 @@ namespace IniEdit.GUI
 
             foreach (var ch in chars)
             {
-                defaultCommentPrefixCombo.Items.Add(ch);
+                _defaultCommentPrefixCombo.Items.Add(ch);
             }
 
-            if (currentSelection != null && defaultCommentPrefixCombo.Items.Contains(currentSelection))
+            if (currentSelection != null && _defaultCommentPrefixCombo.Items.Contains(currentSelection))
             {
-                defaultCommentPrefixCombo.SelectedItem = currentSelection;
+                _defaultCommentPrefixCombo.SelectedItem = currentSelection;
             }
-            else if (defaultCommentPrefixCombo.Items.Count > 0)
+            else if (_defaultCommentPrefixCombo.Items.Count > 0)
             {
-                defaultCommentPrefixCombo.SelectedIndex = 0;
+                _defaultCommentPrefixCombo.SelectedIndex = 0;
             }
         }
 
@@ -250,7 +250,7 @@ namespace IniEdit.GUI
             try
             {
                 // Validate and save settings
-                var commentChars = commentPrefixCharsTextBox.Text
+                var commentChars = _commentPrefixCharsTextBox.Text
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(s => s.Trim())
                     .Where(s => s.Length == 1)
@@ -261,25 +261,25 @@ namespace IniEdit.GUI
                 {
                     MessageBox.Show("Please specify at least one comment prefix character.",
                         "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    commentPrefixCharsTextBox.Focus();
+                    _commentPrefixCharsTextBox.Focus();
                     DialogResult = DialogResult.None;
                     return;
                 }
 
-                if (defaultCommentPrefixCombo.SelectedItem == null)
+                if (_defaultCommentPrefixCombo.SelectedItem == null)
                 {
                     MessageBox.Show("Please select a default comment prefix character.",
                         "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    defaultCommentPrefixCombo.Focus();
+                    _defaultCommentPrefixCombo.Focus();
                     DialogResult = DialogResult.None;
                     return;
                 }
 
                 Options.CommentPrefixChars = commentChars;
-                Options.DefaultCommentPrefixChar = (char)defaultCommentPrefixCombo.SelectedItem!;
-                Options.DuplicateKeyPolicy = (IniConfigOption.DuplicateKeyPolicyType)duplicateKeyPolicyCombo.SelectedItem!;
-                Options.DuplicateSectionPolicy = (IniConfigOption.DuplicateSectionPolicyType)duplicateSectionPolicyCombo.SelectedItem!;
-                Options.CollectParsingErrors = collectParsingErrorsCheckBox.Checked;
+                Options.DefaultCommentPrefixChar = (char)_defaultCommentPrefixCombo.SelectedItem!;
+                Options.DuplicateKeyPolicy = (IniConfigOption.DuplicateKeyPolicyType)_duplicateKeyPolicyCombo.SelectedItem!;
+                Options.DuplicateSectionPolicy = (IniConfigOption.DuplicateSectionPolicyType)_duplicateSectionPolicyCombo.SelectedItem!;
+                Options.CollectParsingErrors = _collectParsingErrorsCheckBox.Checked;
             }
             catch (Exception ex)
             {

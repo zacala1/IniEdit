@@ -4,38 +4,38 @@ namespace IniEdit.GUI.Commands
 {
     public class AddPropertyCommand : ICommand
     {
-        private readonly Section section;
-        private readonly Property property;
-        private readonly int index;
-        private readonly Action refreshUI;
+        private readonly Section _section;
+        private readonly Property _property;
+        private readonly int _index;
+        private readonly Action _refreshUI;
 
-        public string Description => $"Add Property '{property.Name}' = '{property.Value}'";
+        public string Description => $"Add Property '{_property.Name}' = '{_property.Value}'";
 
         public AddPropertyCommand(Section section, Property property, int index, Action refreshUI)
         {
-            this.section = section;
-            this.property = property;
-            this.index = index;
-            this.refreshUI = refreshUI;
+            _section = section;
+            _property = property;
+            _index = index;
+            _refreshUI = refreshUI;
         }
 
         public void Execute()
         {
-            if (index >= 0 && index < section.PropertyCount)
+            if (_index >= 0 && _index < _section.PropertyCount)
             {
-                section.InsertProperty(index, property);
+                _section.InsertProperty(_index, _property);
             }
             else
             {
-                section.AddProperty(property);
+                _section.AddProperty(_property);
             }
-            refreshUI();
+            _refreshUI();
         }
 
         public void Undo()
         {
-            section.RemoveProperty(property.Name);
-            refreshUI();
+            _section.RemoveProperty(_property.Name);
+            _refreshUI();
         }
     }
 }

@@ -8,10 +8,10 @@ namespace IniEdit.GUI
 {
     public class ValidationDialog : Form
     {
-        private readonly ListView errorListView;
-        private readonly Button closeButton;
-        private readonly Button copyButton;
-        private readonly Label summaryLabel;
+        private readonly ListView _errorListView;
+        private readonly Button _closeButton;
+        private readonly Button _copyButton;
+        private readonly Label _summaryLabel;
 
         public ValidationDialog(List<ValidationHelper.ValidationError> errors)
         {
@@ -22,7 +22,7 @@ namespace IniEdit.GUI
             MinimizeBox = false;
 
             // Summary label
-            summaryLabel = new Label
+            _summaryLabel = new Label
             {
                 Location = new Point(10, 10),
                 Size = new Size(660, 30),
@@ -31,17 +31,17 @@ namespace IniEdit.GUI
 
             if (errors.Count == 0)
             {
-                summaryLabel.Text = "✓ No validation errors found!";
-                summaryLabel.ForeColor = Color.Green;
+                _summaryLabel.Text = "✓ No validation errors found!";
+                _summaryLabel.ForeColor = Color.Green;
             }
             else
             {
-                summaryLabel.Text = $"⚠ Found {errors.Count} validation error(s)";
-                summaryLabel.ForeColor = Color.Red;
+                _summaryLabel.Text = $"⚠ Found {errors.Count} validation error(s)";
+                _summaryLabel.ForeColor = Color.Red;
             }
 
             // Error list view
-            errorListView = new ListView
+            _errorListView = new ListView
             {
                 Location = new Point(10, 45),
                 Size = new Size(660, 360),
@@ -51,14 +51,14 @@ namespace IniEdit.GUI
                 MultiSelect = false
             };
 
-            errorListView.Columns.Add("Type", 120);
-            errorListView.Columns.Add("Section", 150);
-            errorListView.Columns.Add("Property", 150);
-            errorListView.Columns.Add("Message", 200);
+            _errorListView.Columns.Add("Type", 120);
+            _errorListView.Columns.Add("Section", 150);
+            _errorListView.Columns.Add("Property", 150);
+            _errorListView.Columns.Add("Message", 200);
 
             foreach (var error in errors)
             {
-                var item = errorListView.Items.Add(error.Type.ToString());
+                var item = _errorListView.Items.Add(error.Type.ToString());
                 item.SubItems.Add(error.SectionName);
                 item.SubItems.Add(error.PropertyName ?? "");
                 item.SubItems.Add(error.Message);
@@ -80,16 +80,16 @@ namespace IniEdit.GUI
             }
 
             // Copy button
-            copyButton = new Button
+            _copyButton = new Button
             {
                 Text = "Copy All",
                 Location = new Point(10, 415),
                 Size = new Size(100, 30)
             };
-            copyButton.Click += (s, e) => CopyErrorsToClipboard(errors);
+            _copyButton.Click += (s, e) => CopyErrorsToClipboard(errors);
 
             // Close button
-            closeButton = new Button
+            _closeButton = new Button
             {
                 Text = "Close",
                 DialogResult = DialogResult.OK,
@@ -98,14 +98,14 @@ namespace IniEdit.GUI
             };
 
             Controls.AddRange(new Control[] {
-                summaryLabel,
-                errorListView,
-                copyButton,
-                closeButton
+                _summaryLabel,
+                _errorListView,
+                _copyButton,
+                _closeButton
             });
 
-            AcceptButton = closeButton;
-            CancelButton = closeButton;
+            AcceptButton = _closeButton;
+            CancelButton = _closeButton;
         }
 
         private void CopyErrorsToClipboard(List<ValidationHelper.ValidationError> errors)

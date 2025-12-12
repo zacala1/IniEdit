@@ -8,17 +8,17 @@ namespace IniEdit.GUI.Commands
     /// </summary>
     public class CommandManager
     {
-        private readonly Stack<ICommand> undoStack = new();
-        private readonly Stack<ICommand> redoStack = new();
+        private readonly Stack<ICommand> _undoStack = new();
+        private readonly Stack<ICommand> _redoStack = new();
         private const int MaxStackSize = 100;
 
         public event EventHandler? StateChanged;
 
-        public bool CanUndo => undoStack.Count > 0;
-        public bool CanRedo => redoStack.Count > 0;
+        public bool CanUndo => _undoStack.Count > 0;
+        public bool CanRedo => _redoStack.Count > 0;
 
-        public string? UndoDescription => CanUndo ? undoStack.Peek().Description : null;
-        public string? RedoDescription => CanRedo ? redoStack.Peek().Description : null;
+        public string? UndoDescription => CanUndo ? _undoStack.Peek().Description : null;
+        public string? RedoDescription => CanRedo ? _redoStack.Peek().Description : null;
 
         /// <summary>
         /// Execute a command and add it to the undo stack
@@ -26,25 +26,25 @@ namespace IniEdit.GUI.Commands
         public void ExecuteCommand(ICommand command)
         {
             command.Execute();
-            undoStack.Push(command);
+            _undoStack.Push(command);
 
             // Limit stack size
-            if (undoStack.Count > MaxStackSize)
+            if (_undoStack.Count > MaxStackSize)
             {
                 var tempStack = new Stack<ICommand>();
                 for (int i = 0; i < MaxStackSize - 1; i++)
                 {
-                    tempStack.Push(undoStack.Pop());
+                    tempStack.Push(_undoStack.Pop());
                 }
-                undoStack.Clear();
+                _undoStack.Clear();
                 while (tempStack.Count > 0)
                 {
-                    undoStack.Push(tempStack.Pop());
+                    _undoStack.Push(tempStack.Pop());
                 }
             }
 
             // Clear redo stack when new command is executed
-            redoStack.Clear();
+            _redoStack.Clear();
 
             OnStateChanged();
         }
@@ -57,9 +57,9 @@ namespace IniEdit.GUI.Commands
             if (!CanUndo)
                 return;
 
-            var command = undoStack.Pop();
+            var command = _undoStack.Pop();
             command.Undo();
-            redoStack.Push(command);
+            _redoStack.Push(command);
 
             OnStateChanged();
         }
@@ -72,9 +72,9 @@ namespace IniEdit.GUI.Commands
             if (!CanRedo)
                 return;
 
-            var command = redoStack.Pop();
+            var command = _redoStack.Pop();
             command.Execute();
-            undoStack.Push(command);
+            _undoStack.Push(command);
 
             OnStateChanged();
         }
@@ -84,8 +84,8 @@ namespace IniEdit.GUI.Commands
         /// </summary>
         public void Clear()
         {
-            undoStack.Clear();
-            redoStack.Clear();
+            _undoStack.Clear();
+            _redoStack.Clear();
             OnStateChanged();
         }
 

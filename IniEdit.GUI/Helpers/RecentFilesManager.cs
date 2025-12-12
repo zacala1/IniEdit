@@ -11,12 +11,12 @@ namespace IniEdit.GUI
     public class RecentFilesManager
     {
         private const int MaxRecentFiles = 10;
-        private readonly List<string> recentFiles = new();
-        private readonly string settingsFilePath;
+        private readonly List<string> _recentFiles = new();
+        private readonly string _settingsFilePath;
 
         public event EventHandler? RecentFilesChanged;
 
-        public IReadOnlyList<string> RecentFiles => recentFiles.AsReadOnly();
+        public IReadOnlyList<string> RecentFiles => _recentFiles.AsReadOnly();
 
         public RecentFilesManager()
         {
@@ -25,7 +25,7 @@ namespace IniEdit.GUI
                 "IniEditor"
             );
             Directory.CreateDirectory(appDataPath);
-            settingsFilePath = Path.Combine(appDataPath, "recent_files.txt");
+            _settingsFilePath = Path.Combine(appDataPath, "recent_files.txt");
             LoadRecentFiles();
         }
 
@@ -41,15 +41,15 @@ namespace IniEdit.GUI
             filePath = Path.GetFullPath(filePath);
 
             // Remove if already exists
-            recentFiles.Remove(filePath);
+            _recentFiles.Remove(filePath);
 
             // Add to top
-            recentFiles.Insert(0, filePath);
+            _recentFiles.Insert(0, filePath);
 
             // Limit size
-            if (recentFiles.Count > MaxRecentFiles)
+            if (_recentFiles.Count > MaxRecentFiles)
             {
-                recentFiles.RemoveAt(recentFiles.Count - 1);
+                _recentFiles.RemoveAt(_recentFiles.Count - 1);
             }
 
             SaveRecentFiles();
@@ -61,7 +61,7 @@ namespace IniEdit.GUI
         /// </summary>
         public void RemoveRecentFile(string filePath)
         {
-            if (recentFiles.Remove(filePath))
+            if (_recentFiles.Remove(filePath))
             {
                 SaveRecentFiles();
                 OnRecentFilesChanged();
@@ -73,7 +73,7 @@ namespace IniEdit.GUI
         /// </summary>
         public void ClearRecentFiles()
         {
-            recentFiles.Clear();
+            _recentFiles.Clear();
             SaveRecentFiles();
             OnRecentFilesChanged();
         }
@@ -82,14 +82,14 @@ namespace IniEdit.GUI
         {
             try
             {
-                if (File.Exists(settingsFilePath))
+                if (File.Exists(_settingsFilePath))
                 {
-                    var lines = File.ReadAllLines(settingsFilePath);
+                    var lines = File.ReadAllLines(_settingsFilePath);
                     foreach (var line in lines)
                     {
                         if (!string.IsNullOrWhiteSpace(line) && File.Exists(line))
                         {
-                            recentFiles.Add(line);
+                            _recentFiles.Add(line);
                         }
                     }
                 }
@@ -104,7 +104,7 @@ namespace IniEdit.GUI
         {
             try
             {
-                File.WriteAllLines(settingsFilePath, recentFiles);
+                File.WriteAllLines(_settingsFilePath, _recentFiles);
             }
             catch
             {

@@ -6,26 +6,26 @@ namespace IniEdit.GUI
 {
     public class FindReplaceDialog : Form
     {
-        private TextBox findTextBox = null!;
-        private TextBox replaceTextBox = null!;
-        private CheckBox matchCaseCheckBox = null!;
-        private CheckBox useRegexCheckBox = null!;
-        private CheckBox searchSectionsCheckBox = null!;
-        private CheckBox searchKeysCheckBox = null!;
-        private CheckBox searchValuesCheckBox = null!;
-        private Button findNextButton = null!;
-        private Button replaceButton = null!;
-        private Button replaceAllButton = null!;
-        private Button closeButton = null!;
-        private Label statusLabel = null!;
+        private TextBox _findTextBox = null!;
+        private TextBox _replaceTextBox = null!;
+        private CheckBox _matchCaseCheckBox = null!;
+        private CheckBox _useRegexCheckBox = null!;
+        private CheckBox _searchSectionsCheckBox = null!;
+        private CheckBox _searchKeysCheckBox = null!;
+        private CheckBox _searchValuesCheckBox = null!;
+        private Button _findNextButton = null!;
+        private Button _replaceButton = null!;
+        private Button _replaceAllButton = null!;
+        private Button _closeButton = null!;
+        private Label _statusLabel = null!;
 
-        public string FindText => findTextBox.Text;
-        public string ReplaceText => replaceTextBox.Text;
-        public bool MatchCase => matchCaseCheckBox.Checked;
-        public bool UseRegex => useRegexCheckBox.Checked;
-        public bool SearchSections => searchSectionsCheckBox.Checked;
-        public bool SearchKeys => searchKeysCheckBox.Checked;
-        public bool SearchValues => searchValuesCheckBox.Checked;
+        public string FindText => _findTextBox.Text;
+        public string ReplaceText => _replaceTextBox.Text;
+        public bool MatchCase => _matchCaseCheckBox.Checked;
+        public bool UseRegex => _useRegexCheckBox.Checked;
+        public bool SearchSections => _searchSectionsCheckBox.Checked;
+        public bool SearchKeys => _searchKeysCheckBox.Checked;
+        public bool SearchValues => _searchValuesCheckBox.Checked;
 
         public event EventHandler? FindNextClicked;
         public event EventHandler? ReplaceClicked;
@@ -55,7 +55,7 @@ namespace IniEdit.GUI
                 Size = new Size(80, 20)
             };
 
-            findTextBox = new TextBox
+            _findTextBox = new TextBox
             {
                 Location = new Point(110, y),
                 Size = new Size(300, 20)
@@ -71,7 +71,7 @@ namespace IniEdit.GUI
                 Size = new Size(80, 20)
             };
 
-            replaceTextBox = new TextBox
+            _replaceTextBox = new TextBox
             {
                 Location = new Point(110, y),
                 Size = new Size(300, 20)
@@ -87,20 +87,20 @@ namespace IniEdit.GUI
                 Size = new Size(390, 130)
             };
 
-            matchCaseCheckBox = new CheckBox
+            _matchCaseCheckBox = new CheckBox
             {
                 Text = "Match case",
                 Location = new Point(10, 20),
                 Size = new Size(180, 20)
             };
 
-            useRegexCheckBox = new CheckBox
+            _useRegexCheckBox = new CheckBox
             {
                 Text = "Use regular expressions",
                 Location = new Point(10, 45),
                 Size = new Size(180, 20)
             };
-            useRegexCheckBox.CheckedChanged += OnRegexCheckChanged;
+            _useRegexCheckBox.CheckedChanged += OnRegexCheckChanged;
 
             var searchInLabel = new Label
             {
@@ -110,7 +110,7 @@ namespace IniEdit.GUI
                 Font = new Font(Font, FontStyle.Bold)
             };
 
-            searchSectionsCheckBox = new CheckBox
+            _searchSectionsCheckBox = new CheckBox
             {
                 Text = "Section names",
                 Location = new Point(100, 75),
@@ -118,7 +118,7 @@ namespace IniEdit.GUI
                 Checked = true
             };
 
-            searchKeysCheckBox = new CheckBox
+            _searchKeysCheckBox = new CheckBox
             {
                 Text = "Key names",
                 Location = new Point(220, 75),
@@ -126,7 +126,7 @@ namespace IniEdit.GUI
                 Checked = true
             };
 
-            searchValuesCheckBox = new CheckBox
+            _searchValuesCheckBox = new CheckBox
             {
                 Text = "Values",
                 Location = new Point(320, 75),
@@ -136,18 +136,18 @@ namespace IniEdit.GUI
 
             optionsGroup.Controls.AddRange(new Control[]
             {
-                matchCaseCheckBox,
-                useRegexCheckBox,
+                _matchCaseCheckBox,
+                _useRegexCheckBox,
                 searchInLabel,
-                searchSectionsCheckBox,
-                searchKeysCheckBox,
-                searchValuesCheckBox
+                _searchSectionsCheckBox,
+                _searchKeysCheckBox,
+                _searchValuesCheckBox
             });
 
             y += 140;
 
             // Status Label
-            statusLabel = new Label
+            _statusLabel = new Label
             {
                 Text = "",
                 Location = new Point(20, y),
@@ -158,66 +158,66 @@ namespace IniEdit.GUI
             y += 30;
 
             // Buttons
-            findNextButton = new Button
+            _findNextButton = new Button
             {
                 Text = "Find Next",
                 Location = new Point(20, y),
                 Size = new Size(90, 30)
             };
-            findNextButton.Click += (s, e) =>
+            _findNextButton.Click += (s, e) =>
             {
                 if (ValidateSearch())
                     FindNextClicked?.Invoke(this, EventArgs.Empty);
             };
 
-            replaceButton = new Button
+            _replaceButton = new Button
             {
                 Text = "Replace",
                 Location = new Point(120, y),
                 Size = new Size(90, 30)
             };
-            replaceButton.Click += (s, e) =>
+            _replaceButton.Click += (s, e) =>
             {
                 if (ValidateSearch())
                     ReplaceClicked?.Invoke(this, EventArgs.Empty);
             };
 
-            replaceAllButton = new Button
+            _replaceAllButton = new Button
             {
                 Text = "Replace All",
                 Location = new Point(220, y),
                 Size = new Size(90, 30)
             };
-            replaceAllButton.Click += (s, e) =>
+            _replaceAllButton.Click += (s, e) =>
             {
                 if (ValidateSearch())
                     ReplaceAllClicked?.Invoke(this, EventArgs.Empty);
             };
 
-            closeButton = new Button
+            _closeButton = new Button
             {
                 Text = "Close",
                 Location = new Point(320, y),
                 Size = new Size(90, 30)
             };
-            closeButton.Click += (s, e) => Close();
+            _closeButton.Click += (s, e) => Close();
 
             Controls.AddRange(new Control[]
             {
-                findLabel, findTextBox,
-                replaceLabel, replaceTextBox,
+                findLabel, _findTextBox,
+                replaceLabel, _replaceTextBox,
                 optionsGroup,
-                statusLabel,
-                findNextButton, replaceButton, replaceAllButton, closeButton
+                _statusLabel,
+                _findNextButton, _replaceButton, _replaceAllButton, _closeButton
             });
 
-            findTextBox.TextChanged += (s, e) => statusLabel.Text = "";
-            CancelButton = closeButton;
+            _findTextBox.TextChanged += (s, e) => _statusLabel.Text = "";
+            CancelButton = _closeButton;
         }
 
         private void OnRegexCheckChanged(object? sender, EventArgs e)
         {
-            if (useRegexCheckBox.Checked)
+            if (_useRegexCheckBox.Checked)
             {
                 SetStatus("Regex enabled. Examples: \\d+ (numbers), [a-z]+ (lowercase), .* (anything)", false);
             }
@@ -229,11 +229,11 @@ namespace IniEdit.GUI
 
         private bool ValidateSearch()
         {
-            if (string.IsNullOrWhiteSpace(findTextBox.Text))
+            if (string.IsNullOrWhiteSpace(_findTextBox.Text))
             {
                 MessageBox.Show("Please enter text to find.", "Find",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
-                findTextBox.Focus();
+                _findTextBox.Focus();
                 return false;
             }
 
@@ -249,13 +249,13 @@ namespace IniEdit.GUI
             {
                 try
                 {
-                    _ = new System.Text.RegularExpressions.Regex(findTextBox.Text);
+                    _ = new System.Text.RegularExpressions.Regex(_findTextBox.Text);
                 }
                 catch (System.ArgumentException ex)
                 {
                     MessageBox.Show($"Invalid regular expression:\n{ex.Message}", "Regex Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    findTextBox.Focus();
+                    _findTextBox.Focus();
                     return false;
                 }
             }
@@ -265,13 +265,13 @@ namespace IniEdit.GUI
 
         public void SetStatus(string message, bool isError = false)
         {
-            statusLabel.Text = message;
-            statusLabel.ForeColor = isError ? Color.Red : Color.Blue;
+            _statusLabel.Text = message;
+            _statusLabel.ForeColor = isError ? Color.Red : Color.Blue;
         }
 
         public void ClearStatus()
         {
-            statusLabel.Text = "";
+            _statusLabel.Text = "";
         }
     }
 }

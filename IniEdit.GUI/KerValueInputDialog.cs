@@ -8,13 +8,13 @@ namespace IniEdit.GUI
 {
     public class KeyValueInputDialog : Form
     {
-        private TextBox keyTextBox;
-        private TextBox valueTextBox;
-        private Button okButton;
-        private Button cancelButton;
+        private TextBox _keyTextBox;
+        private TextBox _valueTextBox;
+        private Button _okButton;
+        private Button _cancelButton;
 
-        public string Key => keyTextBox.Text;
-        public string Value => valueTextBox.Text;
+        public string Key => _keyTextBox.Text;
+        public string Value => _valueTextBox.Text;
 
         public KeyValueInputDialog(string defaultKey = "", string defaultValue = "")
         {
@@ -32,7 +32,7 @@ namespace IniEdit.GUI
                 Size = new Size(260, 20)
             };
 
-            keyTextBox = new TextBox
+            _keyTextBox = new TextBox
             {
                 Location = new Point(10, 40),
                 Size = new Size(260, 20),
@@ -46,21 +46,21 @@ namespace IniEdit.GUI
                 Size = new Size(260, 20)
             };
 
-            valueTextBox = new TextBox
+            _valueTextBox = new TextBox
             {
                 Location = new Point(10, 100),
                 Size = new Size(260, 20),
                 Text = defaultValue
             };
 
-            okButton = new Button
+            _okButton = new Button
             {
                 Text = "OK",
                 DialogResult = DialogResult.OK,
                 Location = new Point(100, 130)
             };
 
-            cancelButton = new Button
+            _cancelButton = new Button
             {
                 Text = "Cancel",
                 DialogResult = DialogResult.Cancel,
@@ -68,13 +68,13 @@ namespace IniEdit.GUI
             };
 
             Controls.AddRange(new Control[] {
-            keyLabel, keyTextBox,
-            valueLabel, valueTextBox,
-            okButton, cancelButton
+            keyLabel, _keyTextBox,
+            valueLabel, _valueTextBox,
+            _okButton, _cancelButton
         });
 
-            AcceptButton = okButton;
-            CancelButton = cancelButton;
+            AcceptButton = _okButton;
+            CancelButton = _cancelButton;
         }
     }
 }
