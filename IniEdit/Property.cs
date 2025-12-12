@@ -9,7 +9,7 @@ namespace IniEdit
     /// <remarks>
     /// This class is NOT thread-safe. External synchronization is required for concurrent access.
     /// </remarks>
-    public class Property : ElementBase
+    public sealed class Property : ElementBase
     {
         private string _value;
 

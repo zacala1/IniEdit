@@ -5,10 +5,28 @@ namespace IniEdit
     /// </summary>
     public class ParsingException : Exception
     {
+        /// <summary>
+        /// Gets all parsing errors that occurred during parsing.
+        /// </summary>
         public IReadOnlyList<ParsingErrorEventArgs> AllErrors { get; }
+
+        /// <summary>
+        /// Gets the line number where the first error occurred.
+        /// </summary>
         public int LineNumber { get; }
+
+        /// <summary>
+        /// Gets the content of the line where the first error occurred.
+        /// </summary>
         public string? Line { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ParsingException"/> class.
+        /// </summary>
+        /// <param name="message">The error message.</param>
+        /// <param name="lineNumber">The line number where the error occurred.</param>
+        /// <param name="line">The content of the line.</param>
+        /// <param name="allErrors">All collected parsing errors.</param>
         public ParsingException(string message, int lineNumber, string line, IReadOnlyList<ParsingErrorEventArgs> allErrors)
             : base(message)
         {
@@ -17,6 +35,11 @@ namespace IniEdit
             AllErrors = allErrors ?? new List<ParsingErrorEventArgs>();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ParsingException"/> class from a single error.
+        /// </summary>
+        /// <param name="message">The error message.</param>
+        /// <param name="error">The parsing error.</param>
         public ParsingException(string message, ParsingErrorEventArgs error)
             : base(message)
         {
@@ -25,6 +48,11 @@ namespace IniEdit
             AllErrors = new List<ParsingErrorEventArgs> { error };
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ParsingException"/> class from a collection of errors.
+        /// </summary>
+        /// <param name="message">The error message.</param>
+        /// <param name="allErrors">All collected parsing errors.</param>
         public ParsingException(string message, IReadOnlyList<ParsingErrorEventArgs> allErrors)
             : base(message)
         {
@@ -36,6 +64,7 @@ namespace IniEdit
             }
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             var sb = new System.Text.StringBuilder();
@@ -66,10 +95,28 @@ namespace IniEdit
     /// </summary>
     public class DuplicateElementException : InvalidOperationException
     {
+        /// <summary>
+        /// Gets the name of the duplicate element.
+        /// </summary>
         public string ElementName { get; }
-        public string ElementType { get; } // "Section" or "Property"
+
+        /// <summary>
+        /// Gets the type of the element ("Section" or "Property").
+        /// </summary>
+        public string ElementType { get; }
+
+        /// <summary>
+        /// Gets the section name where the duplicate property was found, if applicable.
+        /// </summary>
         public string? SectionName { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DuplicateElementException"/> class.
+        /// </summary>
+        /// <param name="message">The error message.</param>
+        /// <param name="elementName">The name of the duplicate element.</param>
+        /// <param name="elementType">The type of the element ("Section" or "Property").</param>
+        /// <param name="sectionName">The section name for duplicate properties.</param>
         public DuplicateElementException(string message, string elementName, string elementType, string? sectionName = null)
             : base(message)
         {

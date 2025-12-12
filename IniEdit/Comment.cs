@@ -3,7 +3,7 @@ namespace IniEdit
     /// <summary>
     /// Represents a single-line comment in an INI configuration file.
     /// </summary>
-    public class Comment
+    public sealed class Comment
     {
         private string _prefix = ";";
 

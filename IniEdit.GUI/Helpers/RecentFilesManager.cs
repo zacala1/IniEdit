@@ -6,9 +6,9 @@ using System.Linq;
 namespace IniEdit.GUI
 {
     /// <summary>
-    /// Manages recent files list
+    /// Manages recent files list for the application.
     /// </summary>
-    public class RecentFilesManager
+    public sealed class RecentFilesManager
     {
         private const int MaxRecentFiles = 10;
         private readonly List<string> _recentFiles = new();

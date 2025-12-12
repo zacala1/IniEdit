@@ -9,7 +9,7 @@ namespace IniEdit
     /// This class extends List&lt;Comment&gt; with additional methods for handling multi-line comment text.
     /// Pre-comments are displayed above their associated element in the INI file.
     /// </remarks>
-    public class CommentCollection : List<Comment>
+    public sealed class CommentCollection : List<Comment>
     {
         /// <summary>
         /// Line break separators used for splitting multi-line text.

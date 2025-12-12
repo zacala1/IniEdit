@@ -3,7 +3,7 @@ namespace IniEdit
     /// <summary>
     /// Provides validation methods for INI configuration elements.
     /// </summary>
-    public class IniConfigValidator
+    public sealed class IniConfigValidator
     {
         private readonly IniConfigOption _option;
 
@@ -121,7 +121,7 @@ namespace IniEdit
     /// <summary>
     /// Represents the result of a validation operation.
     /// </summary>
-    public class IniValidationResult
+    public sealed class IniValidationResult
     {
         /// <summary>
         /// Gets a value indicating whether the validation succeeded.

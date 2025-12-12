@@ -10,7 +10,7 @@ namespace IniEdit
     /// <remarks>
     /// This class is NOT thread-safe. External synchronization is required for concurrent access.
     /// </remarks>
-    public class Section : ElementBase, IEnumerable<Property>
+    public sealed class Section : ElementBase, IEnumerable<Property>
     {
         private readonly List<Property> _properties;
         private readonly Dictionary<string, Property> _propertyLookup;

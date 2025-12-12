@@ -9,23 +9,41 @@ namespace IniEdit.GUI
     /// </summary>
     public static class ValidationHelper
     {
+        /// <summary>
+        /// Types of validation errors that can occur.
+        /// </summary>
         public enum ValidationErrorType
         {
+            /// <summary>Duplicate key found in a section.</summary>
             DuplicateKey,
+            /// <summary>Property key is empty or whitespace.</summary>
             EmptyKey,
+            /// <summary>Property value is empty.</summary>
             EmptyValue,
+            /// <summary>Section name is empty or whitespace.</summary>
             EmptySectionName,
+            /// <summary>Key or value contains invalid characters.</summary>
             InvalidCharacters,
+            /// <summary>Quoted value is not properly terminated.</summary>
             UnterminatedQuote,
+            /// <summary>Property line is missing equals sign.</summary>
             MissingEquals
         }
 
-        public class ValidationError
+        /// <summary>
+        /// Represents a validation error in an INI document.
+        /// </summary>
+        public sealed class ValidationError
         {
+            /// <summary>Gets or sets the type of validation error.</summary>
             public ValidationErrorType Type { get; set; }
+            /// <summary>Gets or sets the name of the section where the error occurred.</summary>
             public string SectionName { get; set; } = string.Empty;
+            /// <summary>Gets or sets the name of the property where the error occurred, if applicable.</summary>
             public string? PropertyName { get; set; }
+            /// <summary>Gets or sets the error message.</summary>
             public string Message { get; set; } = string.Empty;
+            /// <summary>Gets or sets the line number where the error occurred.</summary>
             public int LineNumber { get; set; }
 
             public override string ToString()
@@ -258,18 +276,27 @@ namespace IniEdit.GUI
     }
 
     /// <summary>
-    /// Statistics for an INI document
+    /// Statistics for an INI document.
     /// </summary>
-    public class DocumentStatistics
+    public sealed class DocumentStatistics
     {
+        /// <summary>Gets or sets the total number of sections.</summary>
         public int TotalSections { get; set; }
+        /// <summary>Gets or sets the total number of properties.</summary>
         public int TotalProperties { get; set; }
+        /// <summary>Gets or sets the total number of comments.</summary>
         public int TotalComments { get; set; }
+        /// <summary>Gets or sets the number of quoted values.</summary>
         public int QuotedValues { get; set; }
+        /// <summary>Gets or sets the number of unquoted values.</summary>
         public int UnquotedValues { get; set; }
+        /// <summary>Gets or sets the number of empty values.</summary>
         public int EmptyValues { get; set; }
+        /// <summary>Gets or sets the number of parsing errors.</summary>
         public int ParsingErrors { get; set; }
+        /// <summary>Gets or sets the number of duplicate keys.</summary>
         public int DuplicateKeys { get; set; }
+        /// <summary>Gets or sets the number of validation errors.</summary>
         public int ValidationErrors { get; set; }
 
         public override string ToString()

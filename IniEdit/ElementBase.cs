@@ -3,7 +3,7 @@ namespace IniEdit
     /// <summary>
     /// Base class for INI elements (sections and properties) that support comments.
     /// </summary>
-    public class ElementBase
+    public abstract class ElementBase
     {
         /// <summary>
         /// Gets the name of this element (section name or property key).
@@ -28,11 +28,11 @@ namespace IniEdit
         public ElementBase(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Property name cannot be empty or whitespace", nameof(name));
+                throw new ArgumentException("Element name cannot be empty or whitespace", nameof(name));
             if (name.StartsWith(' ') || name.EndsWith(' '))
-                throw new ArgumentException("Property name cannot have leading or trailing whitespace", nameof(name));
+                throw new ArgumentException("Element name cannot have leading or trailing whitespace", nameof(name));
             if (name.AsSpan().IndexOfAny('\r', '\n') >= 0)
-                throw new ArgumentException("Property name cannot contain newline characters", nameof(name));
+                throw new ArgumentException("Element name cannot contain newline characters", nameof(name));
 
             Name = name;
             PreComments = new CommentCollection();

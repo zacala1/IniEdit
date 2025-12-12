@@ -1,19 +1,37 @@
 namespace IniEdit
 {
-    public class DocumentBuilder
+    /// <summary>
+    /// Provides a fluent interface for building INI documents.
+    /// </summary>
+    public sealed class DocumentBuilder
     {
         private readonly Document _document;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DocumentBuilder"/> class with default options.
+        /// </summary>
         public DocumentBuilder()
         {
             _document = new Document();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DocumentBuilder"/> class with specified options.
+        /// </summary>
+        /// <param name="option">The configuration options for the document.</param>
         public DocumentBuilder(IniConfigOption option)
         {
             _document = new Document(option);
         }
 
+        /// <summary>
+        /// Adds a section to the document with the specified name and configuration.
+        /// </summary>
+        /// <param name="name">The name of the section.</param>
+        /// <param name="configure">An action to configure the section using a <see cref="SectionBuilder"/>.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentException">Thrown when name is null or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when configure is null.</exception>
         public DocumentBuilder WithSection(string name, Action<SectionBuilder> configure)
         {
             if (string.IsNullOrEmpty(name))
@@ -29,6 +47,13 @@ namespace IniEdit
             return this;
         }
 
+        /// <summary>
+        /// Adds a property to the default section.
+        /// </summary>
+        /// <param name="key">The property key.</param>
+        /// <param name="value">The property value.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
         public DocumentBuilder WithDefaultProperty(string key, string value)
         {
             if (string.IsNullOrEmpty(key))
@@ -38,6 +63,14 @@ namespace IniEdit
             return this;
         }
 
+        /// <summary>
+        /// Adds a typed property to the default section.
+        /// </summary>
+        /// <typeparam name="T">The type of the value.</typeparam>
+        /// <param name="key">The property key.</param>
+        /// <param name="value">The property value.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
         public DocumentBuilder WithDefaultProperty<T>(string key, T value)
         {
             if (string.IsNullOrEmpty(key))
@@ -49,26 +82,49 @@ namespace IniEdit
             return this;
         }
 
+        /// <summary>
+        /// Builds and returns the configured document.
+        /// </summary>
+        /// <returns>The built <see cref="Document"/>.</returns>
         public Document Build()
         {
             return _document;
         }
 
+        /// <summary>
+        /// Implicitly converts a <see cref="DocumentBuilder"/> to a <see cref="Document"/>.
+        /// </summary>
+        /// <param name="builder">The builder to convert.</param>
         public static implicit operator Document(DocumentBuilder builder)
         {
             return builder.Build();
         }
     }
 
-    public class SectionBuilder
+    /// <summary>
+    /// Provides a fluent interface for building INI sections.
+    /// </summary>
+    public sealed class SectionBuilder
     {
         private readonly Section _section;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SectionBuilder"/> class.
+        /// </summary>
+        /// <param name="section">The section to build.</param>
+        /// <exception cref="ArgumentNullException">Thrown when section is null.</exception>
         internal SectionBuilder(Section section)
         {
             _section = section ?? throw new ArgumentNullException(nameof(section));
         }
 
+        /// <summary>
+        /// Adds a property to the section.
+        /// </summary>
+        /// <param name="key">The property key.</param>
+        /// <param name="value">The property value.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
         public SectionBuilder WithProperty(string key, string value)
         {
             if (string.IsNullOrEmpty(key))
@@ -78,6 +134,14 @@ namespace IniEdit
             return this;
         }
 
+        /// <summary>
+        /// Adds a typed property to the section.
+        /// </summary>
+        /// <typeparam name="T">The type of the value.</typeparam>
+        /// <param name="key">The property key.</param>
+        /// <param name="value">The property value.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
         public SectionBuilder WithProperty<T>(string key, T value)
         {
             if (string.IsNullOrEmpty(key))
@@ -89,6 +153,13 @@ namespace IniEdit
             return this;
         }
 
+        /// <summary>
+        /// Adds a quoted property to the section.
+        /// </summary>
+        /// <param name="key">The property key.</param>
+        /// <param name="value">The property value.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
         public SectionBuilder WithQuotedProperty(string key, string value)
         {
             if (string.IsNullOrEmpty(key))
@@ -100,6 +171,12 @@ namespace IniEdit
             return this;
         }
 
+        /// <summary>
+        /// Sets the inline comment for the section.
+        /// </summary>
+        /// <param name="comment">The comment text.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when comment is null.</exception>
         public SectionBuilder WithComment(string comment)
         {
             if (comment == null)
@@ -109,6 +186,12 @@ namespace IniEdit
             return this;
         }
 
+        /// <summary>
+        /// Adds a pre-comment to the section.
+        /// </summary>
+        /// <param name="comment">The comment text.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when comment is null.</exception>
         public SectionBuilder WithPreComment(string comment)
         {
             if (comment == null)
@@ -119,8 +202,17 @@ namespace IniEdit
         }
     }
 
+    /// <summary>
+    /// Provides extension methods for fluent document building.
+    /// </summary>
     public static class FluentExtensions
     {
+        /// <summary>
+        /// Converts an existing document to a builder for further modification.
+        /// </summary>
+        /// <param name="document">The document to convert.</param>
+        /// <returns>A new <see cref="DocumentBuilder"/> containing the document's content.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when document is null.</exception>
         public static DocumentBuilder ToBuilder(this Document document)
         {
             if (document == null)

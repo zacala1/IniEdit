@@ -4,25 +4,43 @@ using System.Collections.Generic;
 namespace IniEdit.GUI.Commands
 {
     /// <summary>
-    /// Manages undo/redo operations using Command Pattern
+    /// Manages undo/redo operations using the Command Pattern.
     /// </summary>
-    public class CommandManager
+    public sealed class CommandManager
     {
         private readonly Stack<ICommand> _undoStack = new();
         private readonly Stack<ICommand> _redoStack = new();
         private const int MaxStackSize = 100;
 
+        /// <summary>
+        /// Occurs when the undo/redo state changes.
+        /// </summary>
         public event EventHandler? StateChanged;
 
+        /// <summary>
+        /// Gets a value indicating whether there are commands to undo.
+        /// </summary>
         public bool CanUndo => _undoStack.Count > 0;
+
+        /// <summary>
+        /// Gets a value indicating whether there are commands to redo.
+        /// </summary>
         public bool CanRedo => _redoStack.Count > 0;
 
+        /// <summary>
+        /// Gets the description of the command that would be undone.
+        /// </summary>
         public string? UndoDescription => CanUndo ? _undoStack.Peek().Description : null;
+
+        /// <summary>
+        /// Gets the description of the command that would be redone.
+        /// </summary>
         public string? RedoDescription => CanRedo ? _redoStack.Peek().Description : null;
 
         /// <summary>
-        /// Execute a command and add it to the undo stack
+        /// Executes a command and adds it to the undo stack.
         /// </summary>
+        /// <param name="command">The command to execute.</param>
         public void ExecuteCommand(ICommand command)
         {
             command.Execute();
@@ -50,7 +68,7 @@ namespace IniEdit.GUI.Commands
         }
 
         /// <summary>
-        /// Undo the last command
+        /// Undoes the last executed command.
         /// </summary>
         public void Undo()
         {
@@ -65,7 +83,7 @@ namespace IniEdit.GUI.Commands
         }
 
         /// <summary>
-        /// Redo the last undone command
+        /// Redoes the last undone command.
         /// </summary>
         public void Redo()
         {
@@ -80,7 +98,7 @@ namespace IniEdit.GUI.Commands
         }
 
         /// <summary>
-        /// Clear all undo/redo history
+        /// Clears all undo/redo history.
         /// </summary>
         public void Clear()
         {

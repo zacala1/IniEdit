@@ -11,7 +11,7 @@ namespace IniEdit
     /// threads simultaneously without external synchronization. Each thread should use its
     /// own Document instance or use locks for concurrent access.
     /// </remarks>
-    public class Document : IEnumerable<Section>
+    public sealed class Document : IEnumerable<Section>
     {
         /// <summary>
         /// The name used for the default section (properties without explicit section header).

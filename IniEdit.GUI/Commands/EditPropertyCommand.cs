@@ -2,7 +2,10 @@ using IniEdit;
 
 namespace IniEdit.GUI.Commands
 {
-    public class EditPropertyCommand : ICommand
+    /// <summary>
+    /// Command for editing an existing property. Supports undo/redo operations.
+    /// </summary>
+    public sealed class EditPropertyCommand : ICommand
     {
         private readonly Section _section;
         private readonly string _oldKey;
@@ -17,8 +20,24 @@ namespace IniEdit.GUI.Commands
         private readonly int _propertyIndex;
         private readonly Action _refreshUI;
 
+        /// <inheritdoc/>
         public string Description => $"Edit Property '{_oldKey}' to '{_newKey}'";
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EditPropertyCommand"/> class.
+        /// </summary>
+        /// <param name="section">The section containing the property.</param>
+        /// <param name="oldKey">The original property key.</param>
+        /// <param name="oldValue">The original property value.</param>
+        /// <param name="newKey">The new property key.</param>
+        /// <param name="newValue">The new property value.</param>
+        /// <param name="oldComment">The original inline comment.</param>
+        /// <param name="newComment">The new inline comment.</param>
+        /// <param name="oldIsQuoted">Whether the original value was quoted.</param>
+        /// <param name="newIsQuoted">Whether the new value should be quoted.</param>
+        /// <param name="oldPreComments">The original pre-comments.</param>
+        /// <param name="propertyIndex">The index of the property in the section.</param>
+        /// <param name="refreshUI">Action to refresh the UI after execution.</param>
         public EditPropertyCommand(
             Section section,
             string oldKey,
@@ -51,6 +70,7 @@ namespace IniEdit.GUI.Commands
             _refreshUI = refreshUI;
         }
 
+        /// <inheritdoc/>
         public void Execute()
         {
             _section.RemoveProperty(_oldKey);
@@ -67,6 +87,7 @@ namespace IniEdit.GUI.Commands
             _refreshUI();
         }
 
+        /// <inheritdoc/>
         public void Undo()
         {
             _section.RemoveProperty(_newKey);

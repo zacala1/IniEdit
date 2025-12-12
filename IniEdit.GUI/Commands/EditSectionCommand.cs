@@ -2,15 +2,26 @@ using IniEdit;
 
 namespace IniEdit.GUI.Commands
 {
-    public class EditSectionCommand : ICommand
+    /// <summary>
+    /// Command for renaming a section. Supports undo/redo operations.
+    /// </summary>
+    public sealed class EditSectionCommand : ICommand
     {
         private readonly Document _document;
         private readonly string _oldName;
         private readonly string _newName;
         private readonly Action _refreshUI;
 
+        /// <inheritdoc/>
         public string Description => $"Rename Section '{_oldName}' to '{_newName}'";
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="EditSectionCommand"/> class.
+        /// </summary>
+        /// <param name="document">The document containing the section.</param>
+        /// <param name="oldName">The current name of the section.</param>
+        /// <param name="newName">The new name for the section.</param>
+        /// <param name="refreshUI">Action to refresh the UI after execution.</param>
         public EditSectionCommand(Document document, string oldName, string newName, Action refreshUI)
         {
             _document = document;
@@ -19,6 +30,7 @@ namespace IniEdit.GUI.Commands
             _refreshUI = refreshUI;
         }
 
+        /// <inheritdoc/>
         public void Execute()
         {
             var section = _document.GetSection(_oldName);
@@ -50,6 +62,7 @@ namespace IniEdit.GUI.Commands
             _refreshUI();
         }
 
+        /// <inheritdoc/>
         public void Undo()
         {
             var section = _document.GetSection(_newName);
