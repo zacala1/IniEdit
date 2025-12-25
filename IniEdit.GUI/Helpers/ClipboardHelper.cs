@@ -11,6 +11,7 @@ namespace IniEdit.GUI
     {
         private const string SectionFormat = "IniEdit.Section";
         private const string PropertyFormat = "IniEdit.Property";
+        private const string PropertiesFormat = "IniEdit.Properties";
 
         /// <summary>
         /// Copy section to clipboard
@@ -62,6 +63,48 @@ namespace IniEdit.GUI
         }
 
         /// <summary>
+        /// Copy multiple properties to clipboard
+        /// </summary>
+        public static void CopyProperties(IEnumerable<Property> properties)
+        {
+            var propList = properties.ToList();
+            if (propList.Count == 0)
+                return;
+
+            if (propList.Count == 1)
+            {
+                CopyProperty(propList[0]);
+                return;
+            }
+
+            var data = new DataObject();
+            var clonedList = new List<Property>();
+            var sb = new StringBuilder();
+
+            foreach (var property in propList)
+            {
+                var propClone = new Property(property.Name, property.Value)
+                {
+                    Comment = property.Comment,
+                    IsQuoted = property.IsQuoted
+                };
+                foreach (var comment in property.PreComments)
+                {
+                    propClone.PreComments.Add(comment);
+                }
+                clonedList.Add(propClone);
+
+                var value = property.IsQuoted ? $"\"{property.Value}\"" : property.Value;
+                sb.AppendLine($"{property.Name}={value}");
+            }
+
+            data.SetData(PropertiesFormat, clonedList);
+            data.SetText(sb.ToString());
+
+            Clipboard.SetDataObject(data);
+        }
+
+        /// <summary>
         /// Check if clipboard contains a section
         /// </summary>
         public static bool HasSection()
@@ -77,6 +120,15 @@ namespace IniEdit.GUI
         {
             var data = Clipboard.GetDataObject();
             return data?.GetDataPresent(PropertyFormat) ?? false;
+        }
+
+        /// <summary>
+        /// Check if clipboard contains multiple properties
+        /// </summary>
+        public static bool HasProperties()
+        {
+            var data = Clipboard.GetDataObject();
+            return data?.GetDataPresent(PropertiesFormat) ?? false;
         }
 
         /// <summary>
@@ -115,6 +167,37 @@ namespace IniEdit.GUI
                         propClone.PreComments.Add(comment);
                     }
                     return propClone;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Get multiple properties from clipboard
+        /// </summary>
+        public static List<Property>? GetProperties()
+        {
+            var data = Clipboard.GetDataObject();
+            if (data?.GetDataPresent(PropertiesFormat) ?? false)
+            {
+                var properties = data.GetData(PropertiesFormat) as List<Property>;
+                if (properties != null)
+                {
+                    var clonedList = new List<Property>();
+                    foreach (var property in properties)
+                    {
+                        var propClone = new Property(property.Name, property.Value)
+                        {
+                            Comment = property.Comment,
+                            IsQuoted = property.IsQuoted
+                        };
+                        foreach (var comment in property.PreComments)
+                        {
+                            propClone.PreComments.Add(comment);
+                        }
+                        clonedList.Add(propClone);
+                    }
+                    return clonedList;
                 }
             }
             return null;

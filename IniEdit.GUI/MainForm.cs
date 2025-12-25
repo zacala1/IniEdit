@@ -2209,32 +2209,45 @@ namespace IniEdit.GUI
 
         private void Copy(object? sender, EventArgs e)
         {
-            // Check if a section is selected
-            if (sectionView.SelectedIndex >= 0)
+            // Check if properties are selected (prioritize property selection)
+            if (propertyView.SelectedItems.Count > 0 && sectionView.SelectedIndex >= 0)
             {
                 string sectionName = sectionView.SelectedItem?.ToString() ?? "";
                 var section = GetSection(sectionName);
-                ClipboardHelper.CopySection(section);
-                return;
-            }
 
-            // Check if a property is selected
-            if (propertyView.SelectedItems.Count > 0)
-            {
-                var selectedItem = propertyView.SelectedItems[0];
-                string key = selectedItem.Text;
-
-                if (sectionView.SelectedIndex >= 0)
+                if (propertyView.SelectedItems.Count == 1)
                 {
-                    string sectionName = sectionView.SelectedItem?.ToString() ?? "";
-                    var section = GetSection(sectionName);
+                    // Single property
+                    string key = propertyView.SelectedItems[0].Text;
                     var property = section.GetProperty(key);
-
                     if (property != null)
                     {
                         ClipboardHelper.CopyProperty(property);
                     }
                 }
+                else
+                {
+                    // Multiple properties
+                    var properties = new List<Property>();
+                    foreach (ListViewItem item in propertyView.SelectedItems)
+                    {
+                        var property = section.GetProperty(item.Text);
+                        if (property != null)
+                        {
+                            properties.Add(property);
+                        }
+                    }
+                    ClipboardHelper.CopyProperties(properties);
+                }
+                return;
+            }
+
+            // Check if a section is selected (no properties selected)
+            if (sectionView.SelectedIndex >= 0)
+            {
+                string sectionName = sectionView.SelectedItem?.ToString() ?? "";
+                var section = GetSection(sectionName);
+                ClipboardHelper.CopySection(section);
             }
         }
 
@@ -2291,7 +2304,69 @@ namespace IniEdit.GUI
                 return;
             }
 
-            // Try to paste property
+            // Try to paste multiple properties
+            if (ClipboardHelper.HasProperties())
+            {
+                var properties = ClipboardHelper.GetProperties();
+                if (properties != null && properties.Count > 0 && sectionView.SelectedIndex >= 0)
+                {
+                    string sectionName = sectionView.SelectedItem?.ToString() ?? "";
+                    var section = GetSection(sectionName);
+
+                    var newProperties = new List<Property>();
+                    foreach (var property in properties)
+                    {
+                        // Generate unique key if needed
+                        string newKey = property.Name;
+                        int counter = 1;
+                        while (section.HasProperty(newKey) || newProperties.Any(p => p.Name == newKey))
+                        {
+                            newKey = $"{property.Name}_{counter++}";
+                        }
+
+                        var newProperty = new Property(newKey, property.Value)
+                        {
+                            Comment = property.Comment,
+                            IsQuoted = property.IsQuoted
+                        };
+                        foreach (var comment in property.PreComments)
+                        {
+                            newProperty.PreComments.Add(comment);
+                        }
+                        newProperties.Add(newProperty);
+                    }
+
+                    int startIndex = propertyView.SelectedItems.Count > 0
+                        ? propertyView.SelectedIndices[0]
+                        : section.PropertyCount;
+
+                    var command = new GenericCommand(
+                        $"Paste {newProperties.Count} Properties",
+                        () =>
+                        {
+                            for (int i = 0; i < newProperties.Count; i++)
+                            {
+                                section.InsertProperty(startIndex + i, newProperties[i]);
+                            }
+                            RefreshKeyValueList(sectionName);
+                            RefreshStatusBar();
+                        },
+                        () =>
+                        {
+                            foreach (var prop in newProperties)
+                            {
+                                section.RemoveProperty(prop.Name);
+                            }
+                            RefreshKeyValueList(sectionName);
+                            RefreshStatusBar();
+                        });
+                    _commandManager.ExecuteCommand(command);
+                    SetDirty();
+                }
+                return;
+            }
+
+            // Try to paste single property
             if (ClipboardHelper.HasProperty())
             {
                 var property = ClipboardHelper.GetProperty();
