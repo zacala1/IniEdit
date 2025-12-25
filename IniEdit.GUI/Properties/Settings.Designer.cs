@@ -37,5 +37,140 @@ namespace IniEdit.GUI.Properties
                 this["DarkMode"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Normal")]
+        public global::System.Windows.Forms.FormWindowState WindowState
+        {
+            get
+            {
+                return ((global::System.Windows.Forms.FormWindowState)(this["WindowState"]));
+            }
+            set
+            {
+                this["WindowState"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0, 0")]
+        public global::System.Drawing.Point WindowLocation
+        {
+            get
+            {
+                return ((global::System.Drawing.Point)(this["WindowLocation"]));
+            }
+            set
+            {
+                this["WindowLocation"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("800, 600")]
+        public global::System.Drawing.Size WindowSize
+        {
+            get
+            {
+                return ((global::System.Drawing.Size)(this["WindowSize"]));
+            }
+            set
+            {
+                this["WindowSize"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("150")]
+        public int SplitterDistance1
+        {
+            get
+            {
+                return ((int)(this["SplitterDistance1"]));
+            }
+            set
+            {
+                this["SplitterDistance1"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("300")]
+        public int SplitterDistance2
+        {
+            get
+            {
+                return ((int)(this["SplitterDistance2"]));
+            }
+            set
+            {
+                this["SplitterDistance2"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AutoBackupEnabled
+        {
+            get
+            {
+                return ((bool)(this["AutoBackupEnabled"]));
+            }
+            set
+            {
+                this["AutoBackupEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        public int AutoBackupIntervalMinutes
+        {
+            get
+            {
+                return ((int)(this["AutoBackupIntervalMinutes"]));
+            }
+            set
+            {
+                this["AutoBackupIntervalMinutes"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TreeViewMode
+        {
+            get
+            {
+                return ((bool)(this["TreeViewMode"]));
+            }
+            set
+            {
+                this["TreeViewMode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute(".")]
+        public string TreeViewSeparator
+        {
+            get
+            {
+                return ((string)(this["TreeViewSeparator"]));
+            }
+            set
+            {
+                this["TreeViewSeparator"] = value;
+            }
+        }
     }
 }

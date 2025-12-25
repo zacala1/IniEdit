@@ -64,6 +64,15 @@ namespace IniEdit.GUI
 
         // Property filter
         private TextBox? _propertyFilterBox;
+
+        // Auto-backup
+        private System.Windows.Forms.Timer? _autoBackupTimer;
+        private DateTime _lastAutoBackupTime = DateTime.MinValue;
+
+        // TreeView mode
+        private TreeView? _sectionTreeView;
+        private ToolStripMenuItem? _treeViewModeMenuItem;
+        private ToolStripMenuItem? _autoBackupMenuItem;
         #endregion
 
         public MainForm()
@@ -84,6 +93,18 @@ namespace IniEdit.GUI
 
             // Setup theme
             SetupTheme();
+
+            // Restore window state from settings
+            RestoreWindowState();
+
+            // Setup auto-backup
+            SetupAutoBackup();
+
+            // Setup TreeView mode if enabled
+            if (Properties.Settings.Default.TreeViewMode)
+            {
+                SetupTreeViewMode();
+            }
         }
 
         /// <summary>
@@ -599,7 +620,20 @@ namespace IniEdit.GUI
             _darkModeMenuItem.Checked = ThemeManager.IsDarkMode;
             _darkModeMenuItem.Click += ToggleDarkMode;
 
+            _treeViewModeMenuItem = new ToolStripMenuItem("&Tree View Mode");
+            _treeViewModeMenuItem.CheckOnClick = true;
+            _treeViewModeMenuItem.Checked = Properties.Settings.Default.TreeViewMode;
+            _treeViewModeMenuItem.Click += ToggleTreeViewMode;
+
+            _autoBackupMenuItem = new ToolStripMenuItem("&Auto-Backup");
+            _autoBackupMenuItem.CheckOnClick = true;
+            _autoBackupMenuItem.Checked = Properties.Settings.Default.AutoBackupEnabled;
+            _autoBackupMenuItem.Click += ToggleAutoBackup;
+
             viewMenu.DropDownItems.Add(_darkModeMenuItem);
+            viewMenu.DropDownItems.Add(_treeViewModeMenuItem);
+            viewMenu.DropDownItems.Add(new ToolStripSeparator());
+            viewMenu.DropDownItems.Add(_autoBackupMenuItem);
             menuStrip1.Items.Add(viewMenu);
 
             // Add Tools menu
@@ -2151,6 +2185,9 @@ namespace IniEdit.GUI
                 return;
             }
 
+            // Save window state before closing
+            SaveWindowState();
+
             // Unsubscribe event handlers to prevent memory leaks
             CleanupEventHandlers();
 
@@ -2180,6 +2217,14 @@ namespace IniEdit.GUI
 
             // Dispose inline cell editor
             _inlineCellEditBox.Dispose();
+
+            // Dispose auto-backup timer
+            if (_autoBackupTimer != null)
+            {
+                _autoBackupTimer.Stop();
+                _autoBackupTimer.Dispose();
+                _autoBackupTimer = null;
+            }
         }
         #endregion
 
@@ -2196,6 +2241,528 @@ namespace IniEdit.GUI
                 }
             }
         }
+        #endregion
+
+        #region Window State Persistence
+        private void RestoreWindowState()
+        {
+            try
+            {
+                var settings = Properties.Settings.Default;
+
+                // Restore window size first (before location to ensure proper bounds checking)
+                if (settings.WindowSize.Width >= MinimumSize.Width &&
+                    settings.WindowSize.Height >= MinimumSize.Height)
+                {
+                    this.Size = settings.WindowSize;
+                }
+
+                // Restore window location (ensure it's visible on screen)
+                var location = settings.WindowLocation;
+                var screenBounds = Screen.FromPoint(location).WorkingArea;
+                if (location.X >= screenBounds.Left && location.X < screenBounds.Right &&
+                    location.Y >= screenBounds.Top && location.Y < screenBounds.Bottom)
+                {
+                    this.StartPosition = FormStartPosition.Manual;
+                    this.Location = location;
+                }
+
+                // Restore window state (normal, maximized, etc.)
+                if (settings.WindowState != FormWindowState.Minimized)
+                {
+                    this.WindowState = settings.WindowState;
+                }
+
+                // Restore splitter distances after form is shown
+                this.Shown += (s, e) =>
+                {
+                    try
+                    {
+                        if (settings.SplitterDistance1 > 0 && settings.SplitterDistance1 < splitContainer1.Width)
+                            splitContainer1.SplitterDistance = settings.SplitterDistance1;
+
+                        if (settings.SplitterDistance2 > 0 && settings.SplitterDistance2 < splitContainer2.Height)
+                            splitContainer2.SplitterDistance = settings.SplitterDistance2;
+                    }
+                    catch
+                    {
+                        // Ignore splitter distance errors
+                    }
+                };
+            }
+            catch
+            {
+                // If settings fail to load, use defaults
+            }
+        }
+
+        private void SaveWindowState()
+        {
+            try
+            {
+                var settings = Properties.Settings.Default;
+
+                // Save window state
+                settings.WindowState = this.WindowState;
+
+                // Save size and location only if not minimized/maximized
+                if (this.WindowState == FormWindowState.Normal)
+                {
+                    settings.WindowLocation = this.Location;
+                    settings.WindowSize = this.Size;
+                }
+                else
+                {
+                    // Save the restore bounds when maximized/minimized
+                    settings.WindowLocation = this.RestoreBounds.Location;
+                    settings.WindowSize = this.RestoreBounds.Size;
+                }
+
+                // Save splitter distances
+                settings.SplitterDistance1 = splitContainer1.SplitterDistance;
+                settings.SplitterDistance2 = splitContainer2.SplitterDistance;
+
+                settings.Save();
+            }
+            catch
+            {
+                // Ignore save errors
+            }
+        }
+        #endregion
+
+        #region Auto-Backup
+        private void SetupAutoBackup()
+        {
+            _autoBackupTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 60000 // Check every minute
+            };
+            _autoBackupTimer.Tick += OnAutoBackupTick;
+
+            // Start timer if auto-backup is enabled
+            if (Properties.Settings.Default.AutoBackupEnabled)
+            {
+                _autoBackupTimer.Start();
+            }
+        }
+
+        private void OnAutoBackupTick(object? sender, EventArgs e)
+        {
+            if (!Properties.Settings.Default.AutoBackupEnabled)
+                return;
+
+            // Only backup if there's a file open, it's dirty, and enough time has passed
+            if (_documentConfig == null || !_isDirty || string.IsNullOrEmpty(_currentFilePath))
+                return;
+
+            var interval = TimeSpan.FromMinutes(Properties.Settings.Default.AutoBackupIntervalMinutes);
+            if (DateTime.Now - _lastAutoBackupTime < interval)
+                return;
+
+            PerformAutoBackup();
+        }
+
+        private void PerformAutoBackup()
+        {
+            if (_documentConfig == null || string.IsNullOrEmpty(_currentFilePath))
+                return;
+
+            try
+            {
+                // Create backup file path
+                var backupDir = Path.Combine(Path.GetDirectoryName(_currentFilePath) ?? ".", ".ini_backup");
+                if (!Directory.Exists(backupDir))
+                {
+                    Directory.CreateDirectory(backupDir);
+                    // Hide the backup directory
+                    File.SetAttributes(backupDir, File.GetAttributes(backupDir) | FileAttributes.Hidden);
+                }
+
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var fileName = Path.GetFileNameWithoutExtension(_currentFilePath);
+                var ext = Path.GetExtension(_currentFilePath);
+                var backupPath = Path.Combine(backupDir, $"{fileName}_{timestamp}{ext}.bak");
+
+                // Write backup
+                IniConfigManager.Save(backupPath, _currentEncoding, _documentConfig);
+
+                _lastAutoBackupTime = DateTime.Now;
+
+                // Clean up old backups (keep only last 10)
+                CleanupOldBackups(backupDir, fileName, ext);
+            }
+            catch
+            {
+                // Silently ignore backup errors
+            }
+        }
+
+        private void CleanupOldBackups(string backupDir, string fileName, string ext)
+        {
+            try
+            {
+                var pattern = $"{fileName}_*{ext}.bak";
+                var backupFiles = Directory.GetFiles(backupDir, pattern)
+                    .OrderByDescending(f => f)
+                    .Skip(10) // Keep only the 10 most recent
+                    .ToList();
+
+                foreach (var file in backupFiles)
+                {
+                    File.Delete(file);
+                }
+            }
+            catch
+            {
+                // Silently ignore cleanup errors
+            }
+        }
+
+        private void ToggleAutoBackup(object? sender, EventArgs e)
+        {
+            var settings = Properties.Settings.Default;
+            settings.AutoBackupEnabled = !settings.AutoBackupEnabled;
+            settings.Save();
+
+            if (_autoBackupMenuItem != null)
+            {
+                _autoBackupMenuItem.Checked = settings.AutoBackupEnabled;
+            }
+
+            if (settings.AutoBackupEnabled)
+            {
+                _autoBackupTimer?.Start();
+            }
+            else
+            {
+                _autoBackupTimer?.Stop();
+            }
+        }
+
+        #endregion
+
+        #region TreeView Mode
+        private void SetupTreeViewMode()
+        {
+            if (_sectionTreeView != null)
+                return;
+
+            _sectionTreeView = new TreeView
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9F),
+                HideSelection = false,
+                ShowLines = true,
+                ShowPlusMinus = true,
+                ShowRootLines = true
+            };
+
+            _sectionTreeView.AfterSelect += OnTreeViewSectionSelected;
+            _sectionTreeView.NodeMouseDoubleClick += OnTreeViewNodeDoubleClick;
+
+            // Apply theme
+            _sectionTreeView.BackColor = ThemeManager.ControlBackground;
+            _sectionTreeView.ForeColor = ThemeManager.Foreground;
+            _sectionTreeView.LineColor = ThemeManager.Border;
+
+            // Hide ListBox, show TreeView
+            sectionView.Visible = false;
+            splitContainer1.Panel1.Controls.Add(_sectionTreeView);
+            _sectionTreeView.BringToFront();
+
+            // Setup context menu for TreeView
+            SetupTreeViewContextMenu();
+
+            // Refresh to populate TreeView
+            if (_documentConfig != null)
+            {
+                RefreshTreeView();
+            }
+        }
+
+        private void TearDownTreeViewMode()
+        {
+            if (_sectionTreeView == null)
+                return;
+
+            splitContainer1.Panel1.Controls.Remove(_sectionTreeView);
+            _sectionTreeView.Dispose();
+            _sectionTreeView = null;
+
+            sectionView.Visible = true;
+
+            // Refresh ListBox
+            if (_documentConfig != null)
+            {
+                RefreshSectionList();
+            }
+        }
+
+        private void ToggleTreeViewMode(object? sender, EventArgs e)
+        {
+            var settings = Properties.Settings.Default;
+            settings.TreeViewMode = !settings.TreeViewMode;
+            settings.Save();
+
+            if (_treeViewModeMenuItem != null)
+            {
+                _treeViewModeMenuItem.Checked = settings.TreeViewMode;
+            }
+
+            if (settings.TreeViewMode)
+            {
+                SetupTreeViewMode();
+            }
+            else
+            {
+                TearDownTreeViewMode();
+            }
+        }
+
+        private void RefreshTreeView()
+        {
+            if (_sectionTreeView == null || _documentConfig == null)
+                return;
+
+            _sectionTreeView.BeginUpdate();
+            _sectionTreeView.Nodes.Clear();
+
+            var separator = Properties.Settings.Default.TreeViewSeparator;
+            if (string.IsNullOrEmpty(separator))
+                separator = ".";
+
+            // Add global section
+            var globalNode = new TreeNode(GetGlobalSectionName())
+            {
+                Tag = (Section?)null  // Global section
+            };
+            _sectionTreeView.Nodes.Add(globalNode);
+
+            // Build tree from section names
+            foreach (var section in _documentConfig)
+            {
+                var parts = section.Name.Split(new[] { separator }, StringSplitOptions.None);
+                var currentNodes = _sectionTreeView.Nodes;
+                TreeNode? parentNode = null;
+
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    var partName = string.Join(separator, parts.Take(i + 1));
+                    var displayName = parts[i];
+
+                    // Look for existing node at this level
+                    TreeNode? existingNode = null;
+                    foreach (TreeNode node in currentNodes)
+                    {
+                        if (node.Text == displayName)
+                        {
+                            existingNode = node;
+                            break;
+                        }
+                    }
+
+                    if (existingNode != null)
+                    {
+                        parentNode = existingNode;
+                        currentNodes = existingNode.Nodes;
+                    }
+                    else
+                    {
+                        // Create new node
+                        var newNode = new TreeNode(displayName);
+
+                        // If this is the last part, it's the actual section
+                        if (i == parts.Length - 1)
+                        {
+                            newNode.Tag = section;
+                        }
+                        else
+                        {
+                            // Intermediate node - might represent a section or just a path
+                            var matchingSection = _documentConfig.FirstOrDefault(s => s.Name == partName);
+                            newNode.Tag = matchingSection;
+                        }
+
+                        currentNodes.Add(newNode);
+                        parentNode = newNode;
+                        currentNodes = newNode.Nodes;
+                    }
+                }
+            }
+
+            _sectionTreeView.EndUpdate();
+
+            // Expand first level
+            foreach (TreeNode node in _sectionTreeView.Nodes)
+            {
+                node.Expand();
+            }
+        }
+
+        private void OnTreeViewSectionSelected(object? sender, TreeViewEventArgs e)
+        {
+            if (e.Node == null)
+                return;
+
+            try
+            {
+                _isUpdatingCommentsFromCode = true;
+
+                // If node has a Tag, it's a section; otherwise it's just a folder
+                if (e.Node.Tag is Section section)
+                {
+                    RefreshKeyValueList(section.Name);
+                    preCommentsTextBox.Text = section.PreComments.ToMultiLineText();
+                    inlineCommentTextBox.Text = section.Comment?.Value ?? "";
+                    preCommentsTextBox.Enabled = true;
+                    inlineCommentTextBox.Enabled = true;
+                }
+                else if (e.Node.Tag == null && e.Node.Text == GetGlobalSectionName())
+                {
+                    // Global section
+                    RefreshKeyValueList(GetGlobalSectionName());
+                    preCommentsTextBox.Text = "";
+                    inlineCommentTextBox.Text = "";
+                    preCommentsTextBox.Enabled = false;
+                    inlineCommentTextBox.Enabled = false;
+                }
+                else
+                {
+                    // Just a folder node, clear properties
+                    propertyView.Items.Clear();
+                    preCommentsTextBox.Text = "";
+                    inlineCommentTextBox.Text = "";
+                    preCommentsTextBox.Enabled = false;
+                    inlineCommentTextBox.Enabled = false;
+                }
+
+                RefreshStatusBar();
+            }
+            finally
+            {
+                _isUpdatingCommentsFromCode = false;
+            }
+        }
+
+        private void OnTreeViewNodeDoubleClick(object? sender, TreeNodeMouseClickEventArgs e)
+        {
+            if (e.Node?.Tag is Section section)
+            {
+                // Edit section name
+                EditSectionByName(section.Name);
+            }
+        }
+
+        private void SetupTreeViewContextMenu()
+        {
+            if (_sectionTreeView == null)
+                return;
+
+            var contextMenu = new ContextMenuStrip();
+
+            var addMenu = new ToolStripMenuItem("Add Section");
+            addMenu.Click += AddSection;
+
+            var editMenu = new ToolStripMenuItem("Edit Section");
+            editMenu.Click += (s, e) =>
+            {
+                if (_sectionTreeView.SelectedNode?.Tag is Section section)
+                {
+                    EditSectionByName(section.Name);
+                }
+            };
+
+            var deleteMenu = new ToolStripMenuItem("Delete Section");
+            deleteMenu.Click += (s, e) =>
+            {
+                if (_sectionTreeView.SelectedNode?.Tag is Section section)
+                {
+                    DeleteSectionByName(section.Name);
+                }
+            };
+
+            var expandAllMenu = new ToolStripMenuItem("Expand All");
+            expandAllMenu.Click += (s, e) => _sectionTreeView.ExpandAll();
+
+            var collapseAllMenu = new ToolStripMenuItem("Collapse All");
+            collapseAllMenu.Click += (s, e) => _sectionTreeView.CollapseAll();
+
+            contextMenu.Items.AddRange(new ToolStripItem[]
+            {
+                addMenu,
+                editMenu,
+                deleteMenu,
+                new ToolStripSeparator(),
+                expandAllMenu,
+                collapseAllMenu
+            });
+
+            _sectionTreeView.ContextMenuStrip = contextMenu;
+        }
+
+        private void EditSectionByName(string sectionName)
+        {
+            if (_documentConfig == null)
+                return;
+
+            var section = _documentConfig.GetSection(sectionName);
+            if (section == null)
+                return;
+
+            using var dialog = new InputDialog("Edit Section", "Section name:", sectionName);
+            if (dialog.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.InputText))
+            {
+                var newName = dialog.InputText.Trim();
+                if (newName != sectionName)
+                {
+                    if (_documentConfig.HasSection(newName))
+                    {
+                        MessageBox.Show($"Section '{newName}' already exists.", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    var command = new EditSectionCommand(
+                        _documentConfig,
+                        sectionName,
+                        newName,
+                        () => { RefreshTreeView(); RefreshStatusBar(); });
+                    _commandManager.ExecuteCommand(command);
+                    SetDirty();
+                }
+            }
+        }
+
+        private void DeleteSectionByName(string sectionName)
+        {
+            if (_documentConfig == null)
+                return;
+
+            var section = _documentConfig.GetSection(sectionName);
+            if (section == null)
+                return;
+
+            var result = MessageBox.Show($"Are you sure you want to delete section '{sectionName}'?",
+                "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                int sectionIndex = GetSectionIndex(sectionName);
+                var command = new DeleteSectionCommand(
+                    _documentConfig,
+                    section,
+                    sectionIndex,
+                    () =>
+                    {
+                        RefreshTreeView();
+                        RefreshStatusBar();
+                    });
+                _commandManager.ExecuteCommand(command);
+                SetDirty();
+            }
+        }
+
         #endregion
 
         #region Go to Section
