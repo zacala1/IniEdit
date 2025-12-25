@@ -113,7 +113,7 @@ namespace IniEdit.GUI
                 Text = "(Comma-separated, e.g., ';,#')",
                 Location = new System.Drawing.Point(controlX, y + 25),
                 Size = new System.Drawing.Size(controlWidth, 20),
-                ForeColor = System.Drawing.Color.Gray,
+                ForeColor = System.Drawing.Color.FromArgb(96, 96, 96), // Dark gray for better contrast
                 Font = new System.Drawing.Font(Font.FontFamily, 7.5f)
             };
 

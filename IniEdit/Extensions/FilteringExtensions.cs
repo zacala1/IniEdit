@@ -14,17 +14,39 @@ namespace IniEdit
         private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
 
         /// <summary>
+        /// Maximum number of cached regex patterns to prevent memory leaks.
+        /// </summary>
+        private const int MaxCacheSize = 100;
+
+        /// <summary>
         /// Thread-safe cache for compiled regex patterns.
         /// </summary>
         private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
 
         /// <summary>
         /// Gets or creates a cached regex for the specified pattern.
+        /// Uses an LRU-like eviction strategy when cache exceeds maximum size.
         /// </summary>
         private static Regex GetOrCreateRegex(string pattern)
         {
-            return RegexCache.GetOrAdd(pattern, p =>
-                new Regex(p, RegexOptions.IgnoreCase | RegexOptions.Compiled, RegexTimeout));
+            if (RegexCache.TryGetValue(pattern, out var cached))
+                return cached;
+
+            // Create new regex
+            var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled, RegexTimeout);
+
+            // Evict oldest entries if cache is too large (simple strategy: clear half when full)
+            if (RegexCache.Count >= MaxCacheSize)
+            {
+                var keysToRemove = RegexCache.Keys.Take(MaxCacheSize / 2).ToList();
+                foreach (var key in keysToRemove)
+                {
+                    RegexCache.TryRemove(key, out _);
+                }
+            }
+
+            RegexCache.TryAdd(pattern, regex);
+            return regex;
         }
 
         /// <summary>

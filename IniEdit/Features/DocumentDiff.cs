@@ -114,6 +114,73 @@ namespace IniEdit
     }
 
     /// <summary>
+    /// Options for merging document differences.
+    /// </summary>
+    public sealed class MergeOptions
+    {
+        /// <summary>
+        /// Gets or sets whether to apply added sections.
+        /// </summary>
+        public bool ApplyAddedSections { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to apply removed sections.
+        /// </summary>
+        public bool ApplyRemovedSections { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets whether to apply added properties.
+        /// </summary>
+        public bool ApplyAddedProperties { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether to apply removed properties.
+        /// </summary>
+        public bool ApplyRemovedProperties { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets whether to apply modified properties.
+        /// </summary>
+        public bool ApplyModifiedProperties { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Represents the result of a merge operation.
+    /// </summary>
+    public sealed class MergeResult
+    {
+        /// <summary>
+        /// Gets or sets the number of sections added.
+        /// </summary>
+        public int SectionsAdded { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of sections removed.
+        /// </summary>
+        public int SectionsRemoved { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of properties added.
+        /// </summary>
+        public int PropertiesAdded { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of properties removed.
+        /// </summary>
+        public int PropertiesRemoved { get; set; }
+
+        /// <summary>
+        /// Gets or sets the number of properties modified.
+        /// </summary>
+        public int PropertiesModified { get; set; }
+
+        /// <summary>
+        /// Gets the total number of changes applied.
+        /// </summary>
+        public int TotalChanges => SectionsAdded + SectionsRemoved + PropertiesAdded + PropertiesRemoved + PropertiesModified;
+    }
+
+    /// <summary>
     /// Provides extension methods for comparing INI documents.
     /// </summary>
     public static class DocumentDiffExtensions
@@ -204,6 +271,106 @@ namespace IniEdit
             }
 
             return sectionDiff;
+        }
+
+        /// <summary>
+        /// Applies the differences from a DocumentDiff to a target document.
+        /// </summary>
+        /// <param name="target">The document to apply changes to.</param>
+        /// <param name="diff">The differences to apply.</param>
+        /// <param name="options">Optional merge options.</param>
+        /// <returns>A result containing the number of changes applied.</returns>
+        public static MergeResult Merge(this Document target, DocumentDiff diff, MergeOptions? options = null)
+        {
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+            if (diff == null)
+                throw new ArgumentNullException(nameof(diff));
+
+            options ??= new MergeOptions();
+            var result = new MergeResult();
+
+            // Apply added sections
+            if (options.ApplyAddedSections)
+            {
+                foreach (var section in diff.AddedSections)
+                {
+                    if (!target.HasSection(section.Name))
+                    {
+                        target.AddSection(section.Clone());
+                        result.SectionsAdded++;
+                    }
+                }
+            }
+
+            // Apply removed sections
+            if (options.ApplyRemovedSections)
+            {
+                foreach (var section in diff.RemovedSections)
+                {
+                    if (target.HasSection(section.Name))
+                    {
+                        target.RemoveSection(section.Name);
+                        result.SectionsRemoved++;
+                    }
+                }
+            }
+
+            // Apply modified sections
+            foreach (var sectionDiff in diff.ModifiedSections)
+            {
+                var section = string.IsNullOrEmpty(sectionDiff.SectionName)
+                    ? target.DefaultSection
+                    : target.GetSection(sectionDiff.SectionName);
+
+                if (section == null)
+                {
+                    section = new Section(sectionDiff.SectionName);
+                    target.AddSection(section);
+                }
+
+                // Apply added properties
+                if (options.ApplyAddedProperties)
+                {
+                    foreach (var prop in sectionDiff.AddedProperties)
+                    {
+                        if (!section.HasProperty(prop.Name))
+                        {
+                            section.AddProperty(prop.Clone());
+                            result.PropertiesAdded++;
+                        }
+                    }
+                }
+
+                // Apply removed properties
+                if (options.ApplyRemovedProperties)
+                {
+                    foreach (var prop in sectionDiff.RemovedProperties)
+                    {
+                        if (section.HasProperty(prop.Name))
+                        {
+                            section.RemoveProperty(prop.Name);
+                            result.PropertiesRemoved++;
+                        }
+                    }
+                }
+
+                // Apply modified properties
+                if (options.ApplyModifiedProperties)
+                {
+                    foreach (var propDiff in sectionDiff.ModifiedProperties)
+                    {
+                        var existingProp = section.GetProperty(propDiff.PropertyName);
+                        if (existingProp != null)
+                        {
+                            existingProp.Value = propDiff.NewValue;
+                            result.PropertiesModified++;
+                        }
+                    }
+                }
+            }
+
+            return result;
         }
     }
 }

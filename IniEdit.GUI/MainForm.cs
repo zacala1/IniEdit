@@ -8,6 +8,8 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using IniEdit;
 using IniEdit.GUI.Commands;
+using IniEdit.GUI.Forms;
+using IniEdit.GUI.Theme;
 
 namespace IniEdit.GUI
 {
@@ -36,6 +38,7 @@ namespace IniEdit.GUI
         private readonly CommandManager _commandManager = new();
         private ToolStripMenuItem? _undoMenuItem;
         private ToolStripMenuItem? _redoMenuItem;
+        private ToolStripMenuItem? _darkModeMenuItem;
 
         // Recent Files
         private readonly RecentFilesManager _recentFilesManager = new();
@@ -65,11 +68,49 @@ namespace IniEdit.GUI
             SetupMenuItems();
             SetupCommandManager();
             SetupRecentFiles();
+            SetupAccessibility();
             UpdateTitle();
 
             // Enable key preview for keyboard shortcuts
             this.KeyPreview = true;
             this.KeyDown += OnFormKeyDown;
+
+            // Setup theme
+            SetupTheme();
+        }
+
+        /// <summary>
+        /// Sets up accessibility properties for screen readers and assistive technologies.
+        /// </summary>
+        private void SetupAccessibility()
+        {
+            // Main form
+            this.AccessibleName = "INI Editor Main Window";
+            this.AccessibleDescription = "Main window for editing INI configuration files";
+
+            // Section view
+            sectionView.AccessibleName = "Section List";
+            sectionView.AccessibleDescription = "List of sections in the INI file. Select a section to view its properties.";
+            sectionView.TabIndex = 0;
+
+            // Property view
+            propertyView.AccessibleName = "Property List";
+            propertyView.AccessibleDescription = "List of key-value properties in the selected section. Double-click to edit.";
+            propertyView.TabIndex = 1;
+
+            // Comment text boxes (logical order: inline first, then pre-comments)
+            inlineCommentTextBox.AccessibleName = "Inline Comment";
+            inlineCommentTextBox.AccessibleDescription = "Single line comment that appears after the selected item on the same line.";
+            inlineCommentTextBox.TabIndex = 2;
+
+            preCommentsTextBox.AccessibleName = "Pre-Comments";
+            preCommentsTextBox.AccessibleDescription = "Multi-line comments that appear before the selected item.";
+            preCommentsTextBox.TabIndex = 3;
+
+            // Status bar labels
+            sectionStatusLabel.AccessibleName = "Section Count";
+            keyStatusLabel.AccessibleName = "Key Count";
+            filePathStatusLabel.AccessibleName = "Current File Path";
         }
 
         private void SetupForm()
@@ -91,6 +132,9 @@ namespace IniEdit.GUI
             SetupSectionContextMenu();
             SetupPropertyContextMenu();
 
+            // Setup drag & drop for reordering
+            SetupDragDrop();
+
             RefreshStatusBar();
         }
 
@@ -107,10 +151,11 @@ namespace IniEdit.GUI
             statusStrip1.Items.Add(_encodingStatusLabel);
 
             // Add validation status label
+            // Using DarkGreen for better contrast (WCAG AA compliance)
             _validationStatusLabel = new ToolStripStatusLabel
             {
                 Text = "✓ No errors",
-                ForeColor = Color.Green,
+                ForeColor = Color.FromArgb(0, 128, 0), // Dark green for better contrast
                 BorderSides = ToolStripStatusLabelBorderSides.Right,
                 BorderStyle = Border3DStyle.Etched,
                 IsLink = false
@@ -121,13 +166,39 @@ namespace IniEdit.GUI
 
         private void SetupCommandManager()
         {
-            _commandManager.StateChanged += (s, e) => UpdateUndoRedoMenuItems();
+            _commandManager.StateChanged += OnCommandManagerStateChanged;
             UpdateUndoRedoMenuItems();
+        }
+
+        private void OnCommandManagerStateChanged(object? sender, EventArgs e)
+        {
+            UpdateUndoRedoMenuItems();
+            // Sync dirty flag with command manager save point
+            SyncDirtyWithCommandManager();
+        }
+
+        /// <summary>
+        /// Synchronizes the dirty flag with the command manager's save point tracking.
+        /// </summary>
+        private void SyncDirtyWithCommandManager()
+        {
+            bool shouldBeDirty = _commandManager.IsDirtyFromSavePoint;
+            if (_isDirty != shouldBeDirty)
+            {
+                _isDirty = shouldBeDirty;
+                _statisticsDirty = true;
+                UpdateTitle();
+            }
         }
 
         private void SetupRecentFiles()
         {
-            _recentFilesManager.RecentFilesChanged += (s, e) => UpdateRecentFilesMenu();
+            _recentFilesManager.RecentFilesChanged += OnRecentFilesChanged;
+            UpdateRecentFilesMenu();
+        }
+
+        private void OnRecentFilesChanged(object? sender, EventArgs e)
+        {
             UpdateRecentFilesMenu();
         }
 
@@ -167,13 +238,35 @@ namespace IniEdit.GUI
 
         private void SetupMenuItems()
         {
-            // Add Recent Files menu item to File menu (after Save As)
+            // Add Export submenu to File menu (after Save As)
             var saveAsIndex = fileToolStripMenuItem.DropDownItems.IndexOf(saveAsToolStripMenuItem);
             if (saveAsIndex >= 0)
             {
+                var exportMenu = new ToolStripMenuItem("&Export");
+                var exportJsonMenu = new ToolStripMenuItem("Export as &JSON...");
+                var exportXmlMenu = new ToolStripMenuItem("Export as &XML...");
+                var exportCsvMenu = new ToolStripMenuItem("Export as &CSV...");
+
+                exportJsonMenu.Click += ExportAsJson;
+                exportXmlMenu.Click += ExportAsXml;
+                exportCsvMenu.Click += ExportAsCsv;
+
+                exportMenu.DropDownItems.AddRange(new ToolStripItem[]
+                {
+                    exportJsonMenu,
+                    exportXmlMenu,
+                    exportCsvMenu
+                });
+
                 fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 1, new ToolStripSeparator());
+                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 2, exportMenu);
+                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 3, new ToolStripSeparator());
                 _recentFilesMenuItem = new ToolStripMenuItem("Recent &Files");
-                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 2, _recentFilesMenuItem);
+                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 4, _recentFilesMenuItem);
+            }
+            else
+            {
+                _recentFilesMenuItem = new ToolStripMenuItem("Recent &Files");
             }
 
             // Add Edit menu
@@ -278,6 +371,17 @@ namespace IniEdit.GUI
             });
             menuStrip1.Items.Add(editMenu);
 
+            // Add View menu
+            var viewMenu = new ToolStripMenuItem("&View");
+
+            _darkModeMenuItem = new ToolStripMenuItem("&Dark Mode");
+            _darkModeMenuItem.CheckOnClick = true;
+            _darkModeMenuItem.Checked = ThemeManager.IsDarkMode;
+            _darkModeMenuItem.Click += ToggleDarkMode;
+
+            viewMenu.DropDownItems.Add(_darkModeMenuItem);
+            menuStrip1.Items.Add(viewMenu);
+
             // Add Tools menu
             var toolsMenu = new ToolStripMenuItem("&Tools");
 
@@ -289,6 +393,10 @@ namespace IniEdit.GUI
             statisticsMenu.ShortcutKeys = Keys.F9;
             statisticsMenu.Click += ShowStatisticsDialog;
 
+            var compareMenu = new ToolStripMenuItem("&Compare Documents...");
+            compareMenu.ShortcutKeys = Keys.F7;
+            compareMenu.Click += ShowCompareDialog;
+
             var encodingMenu = new ToolStripMenuItem("Change &Encoding...");
             encodingMenu.Click += ShowEncodingMenu;
 
@@ -299,6 +407,8 @@ namespace IniEdit.GUI
             {
                 validateMenu,
                 statisticsMenu,
+                new ToolStripSeparator(),
+                compareMenu,
                 new ToolStripSeparator(),
                 encodingMenu,
                 new ToolStripSeparator(),
@@ -390,13 +500,13 @@ namespace IniEdit.GUI
                 if (_cachedStatistics!.ValidationErrors > 0)
                 {
                     _validationStatusLabel.Text = $"⚠ {_cachedStatistics.ValidationErrors} validation error(s)";
-                    _validationStatusLabel.ForeColor = Color.Red;
+                    _validationStatusLabel.ForeColor = Color.FromArgb(180, 0, 0); // Dark red for better contrast
                     _validationStatusLabel.IsLink = true;
                 }
                 else
                 {
                     _validationStatusLabel.Text = "✓ No errors";
-                    _validationStatusLabel.ForeColor = Color.Green;
+                    _validationStatusLabel.ForeColor = Color.FromArgb(0, 128, 0); // Dark green for better contrast
                     _validationStatusLabel.IsLink = false;
                 }
             }
@@ -452,18 +562,16 @@ namespace IniEdit.GUI
                         _inlineCellEditBox.Focus();
                         return;
                     }
-                    UpdateKey(oldValue, newValue);
+                    UpdateKeyWithCommand(oldValue, newValue, currentItem);
                 }
                 else
                 {
                     string key = currentItem.SubItems[0].Text;
-                    UpdateValue(key, newValue);
+                    UpdateValueWithCommand(key, oldValue, newValue, currentItem);
                 }
 
-                _currentEditingCell.Text = newValue;
                 _inlineCellEditBox.Visible = false;
                 _currentEditingCell = null;
-                SetDirty();
             }
         }
 
@@ -490,8 +598,12 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    _documentConfig.AddSection(new IniEdit.Section(sectionName));
-                    RefreshSectionList();
+                    var command = new AddSectionCommand(
+                        _documentConfig,
+                        new Section(sectionName),
+                        -1,
+                        () => { RefreshSectionList(); RefreshStatusBar(); });
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
                 }
             }
@@ -533,14 +645,12 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    var section = GetSelectedSection();
-                    _documentConfig.RemoveSection(selectedSection);
-                    var newSection = new IniEdit.Section(newName);
-                    newSection.AddPropertyRange(section.GetProperties());
-                    newSection.PreComments.AddRange(section.PreComments);
-                    newSection.Comment = section.Comment;
-                    _documentConfig.AddSection(newSection);
-                    RefreshSectionList();
+                    var command = new EditSectionCommand(
+                        _documentConfig,
+                        selectedSection,
+                        newName,
+                        () => { RefreshSectionList(); RefreshStatusBar(); });
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
                 }
             }
@@ -553,34 +663,78 @@ namespace IniEdit.GUI
             if (sectionView.SelectedItem == null)
                 return;
 
-            var selectedSection = GetSelectedSectionName();
-            if (selectedSection == null)
+            var selectedSectionName = GetSelectedSectionName();
+            if (selectedSectionName == null)
             {
                 MessageBox.Show("Please select a section first.");
                 return;
             }
 
-            if (MessageBox.Show($"Are you sure you want to delete section '{selectedSection}'?",
+            if (MessageBox.Show($"Are you sure you want to delete section '{selectedSectionName}'?",
                 "Confirm Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                if (selectedSection == GetGlobalSectionName())
+                if (selectedSectionName == GetGlobalSectionName())
                 {
-                    _documentConfig.DefaultSection.Clear();
-                    RefreshKeyValueList(selectedSection);
+                    // Save properties for undo
+                    var savedProperties = _documentConfig.DefaultSection.Select(p => p.Clone()).ToList();
+                    var savedComments = _documentConfig.DefaultSection.PreComments.Select(c => c.Clone()).ToList();
+                    var savedInlineComment = _documentConfig.DefaultSection.Comment?.Clone();
+
+                    var command = new GenericCommand(
+                        "Clear Default Section",
+                        () =>
+                        {
+                            _documentConfig.DefaultSection.Clear();
+                            RefreshKeyValueList(selectedSectionName);
+                            RefreshStatusBar();
+                        },
+                        () =>
+                        {
+                            foreach (var prop in savedProperties)
+                                _documentConfig.DefaultSection.AddProperty(prop);
+                            _documentConfig.DefaultSection.PreComments.AddRange(savedComments);
+                            _documentConfig.DefaultSection.Comment = savedInlineComment;
+                            RefreshKeyValueList(selectedSectionName);
+                            RefreshStatusBar();
+                        });
+                    _commandManager.ExecuteCommand(command);
+                    SetDirty();
                 }
                 else
                 {
-                    _documentConfig.RemoveSection(selectedSection);
-                    RefreshSectionList();
+                    var section = _documentConfig.GetSection(selectedSectionName);
+                    if (section == null) return;
+
+                    int sectionIndex = GetSectionIndex(selectedSectionName);
+                    var command = new DeleteSectionCommand(
+                        _documentConfig,
+                        section,
+                        sectionIndex,
+                        () =>
+                        {
+                            RefreshSectionList();
+                            RefreshStatusBar();
+                            if (sectionView.Items.Count > 0)
+                            {
+                                sectionView.SelectedIndex = 0;
+                            }
+                        });
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
-                    // Select first section after deletion
-                    if (sectionView.Items.Count > 0)
-                    {
-                        sectionView.SelectedIndex = 0;
-                    }
                 }
-                RefreshStatusBar();
             }
+        }
+
+        private int GetSectionIndex(string sectionName)
+        {
+            if (_documentConfig == null) return -1;
+            for (int i = 0; i < _documentConfig.SectionCount; i++)
+            {
+                var section = _documentConfig.GetSectionByIndex(i);
+                if (section?.Name == sectionName)
+                    return i;
+            }
+            return -1;
         }
 
         private void MoveSectionUp(object? sender, EventArgs e)
@@ -593,14 +747,22 @@ namespace IniEdit.GUI
                 return;
 
             int currentIndex = sectionView.SelectedIndex - 1;
-            // ���� ��ġ ����
             var section = _documentConfig[currentIndex];
-            _documentConfig.RemoveSection(currentIndex);
-            _documentConfig.InsertSection(currentIndex - 1, section);
+            int targetIndex = currentIndex - 1;
 
-            RefreshSectionList();
-            sectionView.SelectedIndex = currentIndex;
-            RefreshStatusBar();
+            var command = new MoveSectionCommand(
+                _documentConfig,
+                section.Name,
+                currentIndex,
+                targetIndex,
+                () =>
+                {
+                    RefreshSectionList();
+                    sectionView.SelectedIndex = targetIndex + 1; // +1 for global section
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
+            SetDirty();
         }
 
         private void MoveSectionDown(object? sender, EventArgs e)
@@ -614,14 +776,22 @@ namespace IniEdit.GUI
                 return;
 
             int currentIndex = sectionView.SelectedIndex - 1;
-            // ���� ��ġ ����
             var section = _documentConfig[currentIndex];
-            _documentConfig.RemoveSection(currentIndex);
-            _documentConfig.InsertSection(currentIndex + 1, section);
+            int targetIndex = currentIndex + 1;
 
-            RefreshSectionList();
-            sectionView.SelectedIndex = currentIndex;
-            RefreshStatusBar();
+            var command = new MoveSectionCommand(
+                _documentConfig,
+                section.Name,
+                currentIndex,
+                targetIndex,
+                () =>
+                {
+                    RefreshSectionList();
+                    sectionView.SelectedIndex = targetIndex + 1; // +1 for global section
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
+            SetDirty();
         }
 
         private void DuplicateSection(object? sender, EventArgs e)
@@ -651,25 +821,29 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    // ���� ����
                     var originalSection = GetSection(originalName);
                     var newSection = new Section(newName);
 
-                    // �Ӽ� ����
                     foreach (var property in originalSection)
                     {
                         newSection.AddProperty(property.Clone());
                     }
 
-                    // �ּ� ����
                     newSection.PreComments.AddRange(originalSection.PreComments);
                     newSection.Comment = originalSection.Comment?.Clone();
 
-                    _documentConfig.AddSection(newSection);
-                    RefreshSectionList();
+                    var command = new AddSectionCommand(
+                        _documentConfig,
+                        newSection,
+                        -1,
+                        () =>
+                        {
+                            RefreshSectionList();
+                            sectionView.SelectedItem = newName;
+                            RefreshStatusBar();
+                        });
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
-                    sectionView.SelectedItem = newName;
-                    RefreshStatusBar();
                 }
             }
         }
@@ -680,15 +854,19 @@ namespace IniEdit.GUI
                 return;
             string? selectedSection = sectionView.SelectedItem?.ToString();
 
-            _documentConfig.SortSectionsByName();
-
-            RefreshSectionList();
+            var command = new SortSectionsCommand(
+                _documentConfig,
+                () =>
+                {
+                    RefreshSectionList();
+                    if (selectedSection != null)
+                    {
+                        sectionView.SelectedItem = selectedSection;
+                    }
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
             SetDirty();
-            if (selectedSection != null)
-            {
-                sectionView.SelectedItem = selectedSection;
-            }
-            RefreshStatusBar();
         }
 
         private void AddKeyValue(object? sender, EventArgs e)
@@ -713,8 +891,12 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    selectedSection.AddProperty(new Property(key, value));
-                    RefreshKeyValueList(selectedSection.Name);
+                    var command = new AddPropertyCommand(
+                        selectedSection,
+                        new Property(key, value),
+                        -1,
+                        () => { RefreshKeyValueList(selectedSection.Name); RefreshStatusBar(); });
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
                 }
             }
@@ -743,36 +925,36 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    // Preserve order and comments
                     var oldProperty = selectedSection[oldKey];
-                    int index = -1;
-                    for (int i = 0; i < selectedSection.PropertyCount; i++)
-                    {
-                        if (selectedSection[i] == oldProperty)
-                        {
-                            index = i;
-                            break;
-                        }
-                    }
+                    int index = GetPropertyIndex(selectedSection, oldKey);
 
-                    var newProperty = new Property(newKey, newValue);
-                    newProperty.PreComments.AddRange(oldProperty.PreComments);
-                    newProperty.Comment = oldProperty.Comment;
-                    newProperty.IsQuoted = oldProperty.IsQuoted;
-
-                    selectedSection.RemoveProperty(oldKey);
-                    if (index >= 0)
-                    {
-                        selectedSection.InsertProperty(index, newProperty);
-                    }
-                    else
-                    {
-                        selectedSection.AddProperty(newProperty);
-                    }
-                    RefreshKeyValueList(selectedSection.Name);
+                    var command = new EditPropertyCommand(
+                        selectedSection,
+                        oldKey,
+                        oldValue,
+                        newKey,
+                        newValue,
+                        oldProperty.Comment,
+                        oldProperty.Comment,
+                        oldProperty.IsQuoted,
+                        oldProperty.IsQuoted,
+                        oldProperty.PreComments,
+                        index,
+                        () => { RefreshKeyValueList(selectedSection.Name); RefreshStatusBar(); });
+                    _commandManager.ExecuteCommand(command);
                     SetDirty();
                 }
             }
+        }
+
+        private int GetPropertyIndex(Section section, string propertyName)
+        {
+            for (int i = 0; i < section.PropertyCount; i++)
+            {
+                if (section[i].Name == propertyName)
+                    return i;
+            }
+            return -1;
         }
 
         private void DeleteKeyValue(object? sender, EventArgs e)
@@ -787,8 +969,15 @@ namespace IniEdit.GUI
             if (MessageBox.Show($"Are you sure you want to delete key '{key}'?",
                 "Confirm Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                selectedSection.RemoveProperty(key);
-                RefreshKeyValueList(selectedSection.Name);
+                var property = selectedSection[key];
+                int index = GetPropertyIndex(selectedSection, key);
+
+                var command = new DeletePropertyCommand(
+                    selectedSection,
+                    property,
+                    index,
+                    () => { RefreshKeyValueList(selectedSection.Name); RefreshStatusBar(); });
+                _commandManager.ExecuteCommand(command);
                 SetDirty();
             }
         }
@@ -802,15 +991,23 @@ namespace IniEdit.GUI
 
             int currentIndex = propertyView.SelectedIndices[0];
             var selectedSection = GetSelectedSection();
-
-            // �Ӽ� ��ġ ����
             var property = selectedSection[currentIndex];
-            selectedSection.RemoveProperty(currentIndex);
-            selectedSection.InsertProperty(currentIndex - 1, property);
+            int targetIndex = currentIndex - 1;
 
-            RefreshKeyValueList(selectedSection.Name);
-            propertyView.Items[currentIndex - 1].Selected = true;
-            RefreshStatusBar();
+            var command = new MovePropertyCommand(
+                selectedSection,
+                property.Name,
+                currentIndex,
+                targetIndex,
+                () =>
+                {
+                    RefreshKeyValueList(selectedSection.Name);
+                    if (propertyView.Items.Count > targetIndex)
+                        propertyView.Items[targetIndex].Selected = true;
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
+            SetDirty();
         }
 
         private void MoveKeyDown(object? sender, EventArgs e)
@@ -822,15 +1019,23 @@ namespace IniEdit.GUI
 
             int currentIndex = propertyView.SelectedIndices[0];
             var selectedSection = GetSelectedSection();
-
-            // �Ӽ� ��ġ ����
             var property = selectedSection[currentIndex];
-            selectedSection.RemoveProperty(currentIndex);
-            selectedSection.InsertProperty(currentIndex + 1, property);
+            int targetIndex = currentIndex + 1;
 
-            RefreshKeyValueList(selectedSection.Name);
-            propertyView.Items[currentIndex + 1].Selected = true;
-            RefreshStatusBar();
+            var command = new MovePropertyCommand(
+                selectedSection,
+                property.Name,
+                currentIndex,
+                targetIndex,
+                () =>
+                {
+                    RefreshKeyValueList(selectedSection.Name);
+                    if (propertyView.Items.Count > targetIndex)
+                        propertyView.Items[targetIndex].Selected = true;
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
+            SetDirty();
         }
 
         private void DuplicateKey(object? sender, EventArgs e)
@@ -856,25 +1061,30 @@ namespace IniEdit.GUI
                         return;
                     }
 
-                    // �Ӽ� ����
                     var originalProperty = selectedSection[originalKey].Clone();
                     var newProperty = new Property(newKey, newValue);
                     newProperty.PreComments.AddRange(originalProperty.PreComments);
                     newProperty.Comment = originalProperty.Comment;
 
-                    selectedSection.AddProperty(newProperty);
-                    RefreshKeyValueList(selectedSection.Name);
-
-                    // ���� �߰��� �׸� ����
-                    foreach (ListViewItem item in propertyView.Items)
-                    {
-                        if (item.Text == newKey)
+                    var command = new AddPropertyCommand(
+                        selectedSection,
+                        newProperty,
+                        -1,
+                        () =>
                         {
-                            item.Selected = true;
-                            break;
-                        }
-                    }
-                    RefreshStatusBar();
+                            RefreshKeyValueList(selectedSection.Name);
+                            foreach (ListViewItem item in propertyView.Items)
+                            {
+                                if (item.Text == newKey)
+                                {
+                                    item.Selected = true;
+                                    break;
+                                }
+                            }
+                            RefreshStatusBar();
+                        });
+                    _commandManager.ExecuteCommand(command);
+                    SetDirty();
                 }
             }
         }
@@ -887,21 +1097,27 @@ namespace IniEdit.GUI
             var selectedSection = GetSelectedSection();
             string? selectedKey = propertyView.SelectedItems.Count > 0 ?
                 propertyView.SelectedItems[0].Text : null;
-            selectedSection.SortPropertiesByName();
 
-            RefreshKeyValueList(selectedSection.Name);
-            if (selectedKey != null)
-            {
-                foreach (ListViewItem item in propertyView.Items)
+            var command = new SortPropertiesCommand(
+                selectedSection,
+                () =>
                 {
-                    if (item.Text == selectedKey)
+                    RefreshKeyValueList(selectedSection.Name);
+                    if (selectedKey != null)
                     {
-                        item.Selected = true;
-                        break;
+                        foreach (ListViewItem item in propertyView.Items)
+                        {
+                            if (item.Text == selectedKey)
+                            {
+                                item.Selected = true;
+                                break;
+                            }
+                        }
                     }
-                }
-            }
-            RefreshStatusBar();
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
+            SetDirty();
         }
 
         private void OnInlineCellEditorKeyPress(object? sender, KeyPressEventArgs e)
@@ -929,7 +1145,7 @@ namespace IniEdit.GUI
 
         private void OnSectionSelectionChanged(object? sender, EventArgs e)
         {
-            if (sectionView.SelectedItem == null)
+            if (sectionView.SelectedItem == null || _documentConfig == null)
                 return;
 
             try
@@ -968,7 +1184,7 @@ namespace IniEdit.GUI
 
         private void OnPropertyClick(object? sender, EventArgs e)
         {
-            if (propertyView.SelectedItems.Count > 0)
+            if (propertyView.SelectedItems.Count > 0 && sectionView.SelectedItem != null && _documentConfig != null)
             {
                 ListViewHitTestInfo hitTest = propertyView.HitTest(propertyView.PointToClient(Cursor.Position));
                 try
@@ -979,10 +1195,12 @@ namespace IniEdit.GUI
                     {
                         string key = hitTest.Item.SubItems[0].Text;
                         var selectedSection = GetSelectedSection();
-                        var property = selectedSection[key];
-                        preCommentsTextBox.Text = property.PreComments.ToMultiLineText();
-                        inlineCommentTextBox.Text = property.Comment?.Value ?? "";
-                        RefreshStatusBar();
+                        if (selectedSection.TryGetProperty(key, out var property) && property != null)
+                        {
+                            preCommentsTextBox.Text = property.PreComments.ToMultiLineText();
+                            inlineCommentTextBox.Text = property.Comment?.Value ?? "";
+                            RefreshStatusBar();
+                        }
                     }
                 }
                 finally
@@ -992,43 +1210,74 @@ namespace IniEdit.GUI
             }
         }
 
-        private void UpdateKey(string oldKey, string newKey)
+        private void UpdateKeyWithCommand(string oldKey, string newKey, ListViewItem listItem)
         {
             if (oldKey == newKey)
+            {
+                listItem.SubItems[0].Text = newKey;
                 return;
+            }
             if (sectionView.SelectedItem == null)
                 return;
 
             var selectedSection = GetSelectedSection();
             var property = selectedSection[oldKey];
+            int index = GetPropertyIndex(selectedSection, oldKey);
 
-            // �� Property ���� �� ��/�ּ� ����
-            var newProperty = new Property(newKey, property.Value);
-            newProperty.PreComments.AddRange(property.PreComments);
-            newProperty.Comment = property.Comment;
-
-            // ���� Property ���� �� �� Property �߰�
-            selectedSection.RemoveProperty(oldKey);
-            selectedSection.AddProperty(newProperty);
+            var command = new EditPropertyCommand(
+                selectedSection,
+                oldKey,
+                property.Value,
+                newKey,
+                property.Value,
+                property.Comment,
+                property.Comment,
+                property.IsQuoted,
+                property.IsQuoted,
+                property.PreComments,
+                index,
+                () =>
+                {
+                    listItem.SubItems[0].Text = newKey;
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
+            SetDirty();
         }
 
-        private void UpdateValue(string key, string newValue)
+        private void UpdateValueWithCommand(string key, string oldValue, string newValue, ListViewItem listItem)
         {
+            if (oldValue == newValue)
+            {
+                listItem.SubItems[1].Text = newValue;
+                return;
+            }
             if (sectionView.SelectedItem == null)
                 return;
 
             var selectedSection = GetSelectedSection();
-            selectedSection.SetProperty(key, newValue);
+            var property = selectedSection[key];
+            int index = GetPropertyIndex(selectedSection, key);
 
-            // UI ������Ʈ
-            if (propertyView.SelectedItems.Count > 0)
-            {
-                ListViewItem currentItem = propertyView.SelectedItems[0];
-                if (currentItem.SubItems[0].Text == key)
+            var command = new EditPropertyCommand(
+                selectedSection,
+                key,
+                oldValue,
+                key,
+                newValue,
+                property.Comment,
+                property.Comment,
+                property.IsQuoted,
+                property.IsQuoted,
+                property.PreComments,
+                index,
+                () =>
                 {
-                    currentItem.SubItems[1].Text = newValue;
-                }
-            }
+                    listItem.SubItems[1].Text = newValue;
+                    RefreshStatusBar();
+                });
+            _commandManager.ExecuteCommand(command);
+            SetDirty();
         }
 
         private void ValidateValueComment(string comment)
@@ -1235,6 +1484,7 @@ namespace IniEdit.GUI
             try
             {
                 await IniConfigManager.SaveAsync(_currentFilePath, _documentConfig);
+                _commandManager.MarkSavePoint();
                 SetDirty(false);
                 MessageBox.Show("File saved successfully!", "Save",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1271,6 +1521,7 @@ namespace IniEdit.GUI
             {
                 _currentFilePath = saveFileDialog.FileName;
                 await IniConfigManager.SaveAsync(_currentFilePath, _documentConfig);
+                _commandManager.MarkSavePoint();
                 SetDirty(false);
                 RefreshStatusBar();
                 MessageBox.Show("File saved successfully!", "Save",
@@ -1282,6 +1533,199 @@ namespace IniEdit.GUI
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        #region Export Methods
+
+        private void ExportAsJson(object? sender, EventArgs e)
+        {
+            if (_documentConfig == null)
+            {
+                MessageBox.Show("No document to export.", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using SaveFileDialog saveFileDialog = new()
+            {
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+                FilterIndex = 1,
+                DefaultExt = "json",
+                FileName = Path.GetFileNameWithoutExtension(_currentFilePath)
+            };
+
+            if (saveFileDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            try
+            {
+                var options = new JsonExportOptions
+                {
+                    Indented = true,
+                    AutoConvertTypes = true
+                };
+                DocumentExporter.ToJsonFile(_documentConfig, saveFileDialog.FileName, options);
+                MessageBox.Show("File exported successfully!", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting file: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportAsXml(object? sender, EventArgs e)
+        {
+            if (_documentConfig == null)
+            {
+                MessageBox.Show("No document to export.", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using SaveFileDialog saveFileDialog = new()
+            {
+                Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
+                FilterIndex = 1,
+                DefaultExt = "xml",
+                FileName = Path.GetFileNameWithoutExtension(_currentFilePath)
+            };
+
+            if (saveFileDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            try
+            {
+                var options = new XmlExportOptions
+                {
+                    Indented = true,
+                    IncludeXmlDeclaration = true
+                };
+                DocumentExporter.ToXmlFile(_documentConfig, saveFileDialog.FileName, options);
+                MessageBox.Show("File exported successfully!", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting file: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportAsCsv(object? sender, EventArgs e)
+        {
+            if (_documentConfig == null)
+            {
+                MessageBox.Show("No document to export.", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using SaveFileDialog saveFileDialog = new()
+            {
+                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                FilterIndex = 1,
+                DefaultExt = "csv",
+                FileName = Path.GetFileNameWithoutExtension(_currentFilePath)
+            };
+
+            if (saveFileDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            try
+            {
+                var options = new CsvExportOptions
+                {
+                    IncludeHeader = true,
+                    IncludeComments = true
+                };
+                DocumentExporter.ToCsvFile(_documentConfig, saveFileDialog.FileName, options);
+                MessageBox.Show("File exported successfully!", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting file: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        #endregion
+
+        #region Theme
+
+        private void SetupTheme()
+        {
+            // Subscribe to theme changes
+            ThemeManager.ThemeChanged += OnThemeChanged;
+
+            // Load saved theme preference
+            var savedTheme = Properties.Settings.Default.DarkMode;
+            if (savedTheme)
+            {
+                ThemeManager.SetTheme(AppTheme.Dark);
+            }
+
+            // Apply initial theme
+            ApplyTheme();
+        }
+
+        private void OnThemeChanged(object? sender, EventArgs e)
+        {
+            ApplyTheme();
+
+            // Update menu check state
+            if (_darkModeMenuItem != null)
+            {
+                _darkModeMenuItem.Checked = ThemeManager.IsDarkMode;
+            }
+
+            // Save preference
+            Properties.Settings.Default.DarkMode = ThemeManager.IsDarkMode;
+            Properties.Settings.Default.Save();
+        }
+
+        private void ToggleDarkMode(object? sender, EventArgs e)
+        {
+            ThemeManager.ToggleTheme();
+        }
+
+        private void ApplyTheme()
+        {
+            ThemeManager.ApplyTheme(this);
+
+            // Custom adjustments for specific controls
+            ApplyThemeToPropertyView();
+            ApplyThemeToSectionView();
+            ApplyThemeToCommentBox();
+
+            // Refresh lists to apply colors
+            Refresh();
+        }
+
+        private void ApplyThemeToPropertyView()
+        {
+            propertyView.BackColor = ThemeManager.ControlBackground;
+            propertyView.ForeColor = ThemeManager.Foreground;
+
+            // Update column header style (handled by ThemeManager's OwnerDraw)
+        }
+
+        private void ApplyThemeToSectionView()
+        {
+            sectionView.BackColor = ThemeManager.ControlBackground;
+            sectionView.ForeColor = ThemeManager.Foreground;
+        }
+
+        private void ApplyThemeToCommentBox()
+        {
+            preCommentsTextBox.BackColor = ThemeManager.ControlBackground;
+            preCommentsTextBox.ForeColor = ThemeManager.Foreground;
+            inlineCommentTextBox.BackColor = ThemeManager.ControlBackground;
+            inlineCommentTextBox.ForeColor = ThemeManager.Foreground;
+        }
+
+        #endregion
 
         private void ShowAboutDialog(object? sender, EventArgs e)
         {
@@ -1367,8 +1811,38 @@ namespace IniEdit.GUI
             if (!PromptSaveChanges())
             {
                 e.Cancel = true;
+                return;
             }
+
+            // Unsubscribe event handlers to prevent memory leaks
+            CleanupEventHandlers();
+
             base.OnFormClosing(e);
+        }
+
+        private void CleanupEventHandlers()
+        {
+            // Unsubscribe form events
+            this.KeyDown -= OnFormKeyDown;
+
+            // Unsubscribe CommandManager events
+            _commandManager.StateChanged -= OnCommandManagerStateChanged;
+
+            // Unsubscribe RecentFilesManager events
+            _recentFilesManager.RecentFilesChanged -= OnRecentFilesChanged;
+
+            // Unsubscribe FindReplaceDialog events
+            if (_findReplaceDialog != null && !_findReplaceDialog.IsDisposed)
+            {
+                _findReplaceDialog.FindNextClicked -= FindNext;
+                _findReplaceDialog.ReplaceClicked -= Replace;
+                _findReplaceDialog.ReplaceAllClicked -= ReplaceAll;
+                _findReplaceDialog.Dispose();
+                _findReplaceDialog = null;
+            }
+
+            // Dispose inline cell editor
+            _inlineCellEditBox.Dispose();
         }
         #endregion
 
@@ -1525,20 +1999,19 @@ namespace IniEdit.GUI
                 string newKey = ReplaceString(key, findText, replaceText, matchCase, useRegex);
                 if (newKey != key && !selectedSection.HasProperty(newKey))
                 {
-                    UpdateKey(key, newKey);
-                    selectedItem.SubItems[0].Text = newKey;
+                    UpdateKeyWithCommand(key, newKey, selectedItem);
                     replaced = true;
-                    SetDirty();
                 }
             }
+
+            // If key was replaced, update key variable for value replacement
+            key = selectedItem.SubItems[0].Text;
 
             if (_findReplaceDialog.SearchValues && IsMatch(value, findText, matchCase, useRegex))
             {
                 string newValue = ReplaceString(value, findText, replaceText, matchCase, useRegex);
-                UpdateValue(key, newValue);
-                selectedItem.SubItems[1].Text = newValue;
+                UpdateValueWithCommand(key, value, newValue, selectedItem);
                 replaced = true;
-                SetDirty();
             }
 
             if (replaced)
@@ -1887,6 +2360,215 @@ namespace IniEdit.GUI
 
         #endregion
 
+        #region Drag and Drop
+
+        private int _dragSectionIndex = -1;
+        private int _dragPropertyIndex = -1;
+
+        private void SetupDragDrop()
+        {
+            // Section view drag & drop
+            sectionView.AllowDrop = true;
+            sectionView.MouseDown += SectionView_MouseDown;
+            sectionView.MouseMove += SectionView_MouseMove;
+            sectionView.DragOver += SectionView_DragOver;
+            sectionView.DragDrop += SectionView_DragDrop;
+
+            // Property view drag & drop
+            propertyView.AllowDrop = true;
+            propertyView.ItemDrag += PropertyView_ItemDrag;
+            propertyView.DragOver += PropertyView_DragOver;
+            propertyView.DragDrop += PropertyView_DragDrop;
+        }
+
+        private void SectionView_MouseDown(object? sender, MouseEventArgs e)
+        {
+            _dragSectionIndex = sectionView.IndexFromPoint(e.Location);
+        }
+
+        private void SectionView_MouseMove(object? sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left || _dragSectionIndex < 0)
+                return;
+
+            if (sectionView.Items.Count <= 1)
+                return;
+
+            var item = sectionView.Items[_dragSectionIndex];
+            sectionView.DoDragDrop(item, DragDropEffects.Move);
+        }
+
+        private void SectionView_DragOver(object? sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.Move;
+        }
+
+        private void SectionView_DragDrop(object? sender, DragEventArgs e)
+        {
+            if (_documentConfig == null || _dragSectionIndex < 0)
+                return;
+
+            var point = sectionView.PointToClient(new Point(e.X, e.Y));
+            int targetIndex = sectionView.IndexFromPoint(point);
+
+            if (targetIndex < 0)
+                targetIndex = sectionView.Items.Count - 1;
+
+            if (targetIndex == _dragSectionIndex)
+                return;
+
+            // Get the section being moved
+            var sectionName = sectionView.Items[_dragSectionIndex]?.ToString();
+            if (string.IsNullOrEmpty(sectionName))
+                return;
+
+            var section = _documentConfig.GetSection(sectionName);
+            if (section == null)
+                return;
+
+            // Create command for undo/redo
+            int oldIndex = _dragSectionIndex;
+            int newIndex = targetIndex;
+            var command = new GenericCommand(
+                $"Move section '{sectionName}'",
+                () => MoveSectionToIndex(sectionName, newIndex),
+                () => MoveSectionToIndex(sectionName, oldIndex)
+            );
+            _commandManager.ExecuteCommand(command);
+
+            _dragSectionIndex = -1;
+        }
+
+        private void MoveSectionToIndex(string sectionName, int targetIndex)
+        {
+            if (_documentConfig == null)
+                return;
+
+            var section = _documentConfig.GetSection(sectionName);
+            if (section == null)
+                return;
+
+            // Remove and re-add at new position
+            _documentConfig.RemoveSection(sectionName);
+
+            // Insert at the correct position
+            var allSections = _documentConfig.ToList();
+            if (targetIndex >= allSections.Count)
+            {
+                _documentConfig.AddSection(section);
+            }
+            else
+            {
+                // We need to reorder - remove all and add back in order
+                foreach (var s in allSections)
+                    _documentConfig.RemoveSection(s.Name);
+
+                allSections.Insert(targetIndex, section);
+                foreach (var s in allSections)
+                    _documentConfig.AddSection(s);
+            }
+
+            RefreshSectionList();
+            // Select the moved section
+            for (int i = 0; i < sectionView.Items.Count; i++)
+            {
+                if (sectionView.Items[i]?.ToString() == sectionName)
+                {
+                    sectionView.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        private void PropertyView_ItemDrag(object? sender, ItemDragEventArgs e)
+        {
+            if (e.Item is ListViewItem item)
+            {
+                _dragPropertyIndex = item.Index;
+                propertyView.DoDragDrop(item, DragDropEffects.Move);
+            }
+        }
+
+        private void PropertyView_DragOver(object? sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.Move;
+        }
+
+        private void PropertyView_DragDrop(object? sender, DragEventArgs e)
+        {
+            if (_documentConfig == null || _dragPropertyIndex < 0)
+                return;
+
+            var point = propertyView.PointToClient(new Point(e.X, e.Y));
+            var targetItem = propertyView.GetItemAt(point.X, point.Y);
+            int targetIndex = targetItem?.Index ?? propertyView.Items.Count - 1;
+
+            if (targetIndex == _dragPropertyIndex)
+                return;
+
+            var section = GetSelectedSection();
+            if (section == null)
+                return;
+
+            var properties = section.GetProperties().ToList();
+            if (_dragPropertyIndex >= properties.Count)
+                return;
+
+            var property = properties[_dragPropertyIndex];
+
+            // Create command for undo/redo
+            int oldIndex = _dragPropertyIndex;
+            int newIndex = targetIndex;
+            var command = new GenericCommand(
+                $"Move property '{property.Name}'",
+                () => MovePropertyToIndex(section.Name, property.Name, newIndex),
+                () => MovePropertyToIndex(section.Name, property.Name, oldIndex)
+            );
+            _commandManager.ExecuteCommand(command);
+
+            _dragPropertyIndex = -1;
+        }
+
+        private void MovePropertyToIndex(string sectionName, string propertyName, int targetIndex)
+        {
+            if (_documentConfig == null)
+                return;
+
+            var section = sectionName == ""
+                ? _documentConfig.DefaultSection
+                : _documentConfig.GetSection(sectionName);
+
+            if (section == null)
+                return;
+
+            var property = section.GetProperty(propertyName);
+            if (property == null)
+                return;
+
+            // Remove and re-add at new position
+            var properties = section.GetProperties().ToList();
+            var currentIndex = properties.FindIndex(p => p.Name == propertyName);
+
+            if (currentIndex < 0 || currentIndex == targetIndex)
+                return;
+
+            // Remove all properties and re-add in new order
+            foreach (var p in properties)
+                section.RemoveProperty(p.Name);
+
+            properties.RemoveAt(currentIndex);
+            if (targetIndex > currentIndex)
+                targetIndex--;
+            properties.Insert(Math.Min(targetIndex, properties.Count), property);
+
+            foreach (var p in properties)
+                section.AddProperty(p);
+
+            RefreshKeyValueList(sectionName);
+        }
+
+        #endregion
+
         #region Context Menus
 
         private void SetupSectionContextMenu()
@@ -2104,6 +2786,55 @@ namespace IniEdit.GUI
             using (var dialog = new StatisticsDialog(stats))
             {
                 dialog.ShowDialog(this);
+            }
+        }
+
+        private async void ShowCompareDialog(object? sender, EventArgs e)
+        {
+            if (_documentConfig == null)
+            {
+                MessageBox.Show("Please open a document first.", "Compare Documents",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using OpenFileDialog openDialog = new()
+            {
+                Filter = "INI files (*.ini)|*.ini|All files (*.*)|*.*",
+                FilterIndex = 1,
+                Title = "Select document to compare with"
+            };
+
+            if (openDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            try
+            {
+                var otherEncoding = EncodingHelper.DetectEncoding(openDialog.FileName);
+                var otherDoc = await IniConfigManager.LoadAsync(openDialog.FileName, otherEncoding, _configOptions);
+                var leftTitle = string.IsNullOrEmpty(_currentFilePath) ? "Current Document" : Path.GetFileName(_currentFilePath);
+                var rightTitle = Path.GetFileName(openDialog.FileName);
+
+                using var diffViewer = new DiffViewerForm(_documentConfig, otherDoc, leftTitle, rightTitle);
+                if (diffViewer.ShowDialog(this) == DialogResult.OK && diffViewer.MergeResult != null)
+                {
+                    // Changes were merged
+                    if (diffViewer.MergeResult.TotalChanges > 0)
+                    {
+                        _isDirty = true;
+                        UpdateTitle();
+                        RefreshSectionList();
+                        if (sectionView.Items.Count > 0)
+                        {
+                            sectionView.SelectedIndex = 0;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading document: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

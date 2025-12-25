@@ -327,9 +327,11 @@ namespace IniEdit.GUI
             filePathStatusLabel.Spring = true;
             filePathStatusLabel.Text = "File: -";
             filePathStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
-            // 
+            //
             // MainForm
-            // 
+            //
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(784, 561);
             Controls.Add(mainPanel);
             Controls.Add(menuStrip1);

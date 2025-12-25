@@ -13,6 +13,12 @@ namespace IniEdit.GUI.Commands
         private const int MaxStackSize = 100;
 
         /// <summary>
+        /// Tracks the undo stack count at the time of last save.
+        /// -1 means no save point (new document or cleared).
+        /// </summary>
+        private int _savePointUndoCount = 0;
+
+        /// <summary>
         /// Occurs when the undo/redo state changes.
         /// </summary>
         public event EventHandler? StateChanged;
@@ -26,6 +32,12 @@ namespace IniEdit.GUI.Commands
         /// Gets a value indicating whether there are commands to redo.
         /// </summary>
         public bool CanRedo => _redoStack.Count > 0;
+
+        /// <summary>
+        /// Gets a value indicating whether the current state differs from the last save point.
+        /// This is determined by comparing the current undo stack count with the save point.
+        /// </summary>
+        public bool IsDirtyFromSavePoint => _undoStack.Count != _savePointUndoCount;
 
         /// <summary>
         /// Gets the description of the command that would be undone.
@@ -104,6 +116,17 @@ namespace IniEdit.GUI.Commands
         {
             _undoStack.Clear();
             _redoStack.Clear();
+            _savePointUndoCount = 0;
+            OnStateChanged();
+        }
+
+        /// <summary>
+        /// Marks the current state as the save point.
+        /// Call this after successfully saving the document.
+        /// </summary>
+        public void MarkSavePoint()
+        {
+            _savePointUndoCount = _undoStack.Count;
             OnStateChanged();
         }
 

@@ -311,5 +311,227 @@ namespace IniEdit.Tests
         }
 
         #endregion
+
+        #region Merge Tests
+
+        [Test]
+        public void Merge_AddedSections_AppliesChanges()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "Value1");
+
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "Value1");
+            modified["Section2"].AddProperty("Key2", "Value2");
+
+            var diff = original.Compare(modified);
+
+            // Act
+            var result = original.Merge(diff);
+
+            // Assert
+            Assert.AreEqual(1, result.SectionsAdded);
+            Assert.IsTrue(original.HasSection("Section2"));
+            Assert.AreEqual("Value2", original["Section2"].GetProperty("Key2")!.Value);
+        }
+
+        [Test]
+        public void Merge_RemovedSections_AppliesWhenEnabled()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "Value1");
+            original["Section2"].AddProperty("Key2", "Value2");
+
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "Value1");
+
+            var diff = original.Compare(modified);
+            var options = new MergeOptions { ApplyRemovedSections = true };
+
+            // Act
+            var result = original.Merge(diff, options);
+
+            // Assert
+            Assert.AreEqual(1, result.SectionsRemoved);
+            Assert.IsFalse(original.HasSection("Section2"));
+        }
+
+        [Test]
+        public void Merge_RemovedSections_IgnoredByDefault()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "Value1");
+            original["Section2"].AddProperty("Key2", "Value2");
+
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "Value1");
+
+            var diff = original.Compare(modified);
+
+            // Act
+            var result = original.Merge(diff);
+
+            // Assert
+            Assert.AreEqual(0, result.SectionsRemoved);
+            Assert.IsTrue(original.HasSection("Section2"));
+        }
+
+        [Test]
+        public void Merge_AddedProperties_AppliesChanges()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "Value1");
+
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "Value1");
+            modified["Section1"].AddProperty("Key2", "Value2");
+
+            var diff = original.Compare(modified);
+
+            // Act
+            var result = original.Merge(diff);
+
+            // Assert
+            Assert.AreEqual(1, result.PropertiesAdded);
+            Assert.AreEqual("Value2", original["Section1"].GetProperty("Key2")!.Value);
+        }
+
+        [Test]
+        public void Merge_ModifiedProperties_AppliesChanges()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "OldValue");
+
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "NewValue");
+
+            var diff = original.Compare(modified);
+
+            // Act
+            var result = original.Merge(diff);
+
+            // Assert
+            Assert.AreEqual(1, result.PropertiesModified);
+            Assert.AreEqual("NewValue", original["Section1"].GetProperty("Key1")!.Value);
+        }
+
+        [Test]
+        public void Merge_RemovedProperties_AppliesWhenEnabled()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "Value1");
+            original["Section1"].AddProperty("Key2", "Value2");
+
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "Value1");
+
+            var diff = original.Compare(modified);
+            var options = new MergeOptions { ApplyRemovedProperties = true };
+
+            // Act
+            var result = original.Merge(diff, options);
+
+            // Assert
+            Assert.AreEqual(1, result.PropertiesRemoved);
+            Assert.IsFalse(original["Section1"].HasProperty("Key2"));
+        }
+
+        [Test]
+        public void Merge_NullTarget_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Document? target = null;
+            var diff = new DocumentDiff();
+
+            // Act & Assert
+#pragma warning disable CS8604
+            NUnit.Framework.Assert.Throws<ArgumentNullException>(() => target!.Merge(diff));
+#pragma warning restore CS8604
+        }
+
+        [Test]
+        public void Merge_NullDiff_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var target = new Document();
+            DocumentDiff? diff = null;
+
+            // Act & Assert
+#pragma warning disable CS8604
+            NUnit.Framework.Assert.Throws<ArgumentNullException>(() => target.Merge(diff!));
+#pragma warning restore CS8604
+        }
+
+        [Test]
+        public void Merge_ComplexChanges_AppliesAll()
+        {
+            // Arrange
+            var original = new Document();
+            original["Section1"].AddProperty("Key1", "Value1");
+            original["Section2"].AddProperty("Key2", "Value2");
+
+            var modified = new Document();
+            modified["Section1"].AddProperty("Key1", "ModifiedValue");
+            modified["Section1"].AddProperty("NewKey", "NewValue");
+            modified["Section3"].AddProperty("Key3", "Value3");
+
+            var diff = original.Compare(modified);
+            var options = new MergeOptions
+            {
+                ApplyAddedSections = true,
+                ApplyAddedProperties = true,
+                ApplyModifiedProperties = true
+            };
+
+            // Act
+            var result = original.Merge(diff, options);
+
+            // Assert
+            Assert.AreEqual(1, result.SectionsAdded); // Section3
+            Assert.AreEqual(1, result.PropertiesAdded); // NewKey
+            Assert.AreEqual(1, result.PropertiesModified); // Key1
+            Assert.AreEqual("ModifiedValue", original["Section1"].GetProperty("Key1")!.Value);
+            Assert.AreEqual("NewValue", original["Section1"].GetProperty("NewKey")!.Value);
+            Assert.IsTrue(original.HasSection("Section3"));
+        }
+
+        [Test]
+        public void MergeResult_TotalChanges_SumsCorrectly()
+        {
+            // Arrange
+            var result = new MergeResult
+            {
+                SectionsAdded = 1,
+                SectionsRemoved = 2,
+                PropertiesAdded = 3,
+                PropertiesRemoved = 4,
+                PropertiesModified = 5
+            };
+
+            // Assert
+            Assert.AreEqual(15, result.TotalChanges);
+        }
+
+        [Test]
+        public void MergeOptions_Defaults_AreCorrect()
+        {
+            // Arrange & Act
+            var options = new MergeOptions();
+
+            // Assert
+            Assert.IsTrue(options.ApplyAddedSections);
+            Assert.IsFalse(options.ApplyRemovedSections);
+            Assert.IsTrue(options.ApplyAddedProperties);
+            Assert.IsFalse(options.ApplyRemovedProperties);
+            Assert.IsTrue(options.ApplyModifiedProperties);
+        }
+
+        #endregion
     }
 }

@@ -233,7 +233,7 @@ namespace IniEdit
         /// <typeparam name="T">The type of array elements.</typeparam>
         /// <param name="maxElements">Maximum number of elements allowed. Default is 10000. Set to 0 for unlimited.</param>
         /// <returns>An array of values.</returns>
-        /// <exception cref="FormatException">Thrown when the value is not in the correct array format or exceeds maxElements.</exception>
+        /// <exception cref="FormatException">Thrown when the value is not in the correct array format, exceeds maxElements, or element conversion fails.</exception>
         public T[] GetValueArray<T>(int maxElements = 10000)
         {
             ReadOnlySpan<char> span = _value.AsSpan().Trim();
@@ -293,7 +293,14 @@ namespace IniEdit
                                       .Replace("\\\"", "\"");
                 }
 
-                values.Add((T)Convert.ChangeType(valueStr, typeof(T)));
+                try
+                {
+                    values.Add((T)Convert.ChangeType(valueStr, typeof(T)));
+                }
+                catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
+                {
+                    throw new FormatException($"Cannot convert array element '{valueStr}' to type {typeof(T).Name}", ex);
+                }
             }
         }
 

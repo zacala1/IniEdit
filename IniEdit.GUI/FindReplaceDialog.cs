@@ -152,7 +152,7 @@ namespace IniEdit.GUI
                 Text = "",
                 Location = new Point(20, y),
                 Size = new Size(390, 20),
-                ForeColor = Color.Blue
+                ForeColor = Color.FromArgb(0, 0, 139) // Dark blue for better contrast
             };
 
             y += 30;
@@ -266,7 +266,8 @@ namespace IniEdit.GUI
         public void SetStatus(string message, bool isError = false)
         {
             _statusLabel.Text = message;
-            _statusLabel.ForeColor = isError ? Color.Red : Color.Blue;
+            // Use darker colors for better contrast (WCAG AA compliance)
+            _statusLabel.ForeColor = isError ? Color.FromArgb(180, 0, 0) : Color.FromArgb(0, 0, 139);
         }
 
         public void ClearStatus()

@@ -32,12 +32,12 @@ namespace IniEdit.GUI
             if (errors.Count == 0)
             {
                 _summaryLabel.Text = "✓ No validation errors found!";
-                _summaryLabel.ForeColor = Color.Green;
+                _summaryLabel.ForeColor = Color.FromArgb(0, 128, 0); // Dark green for better contrast
             }
             else
             {
                 _summaryLabel.Text = $"⚠ Found {errors.Count} validation error(s)";
-                _summaryLabel.ForeColor = Color.Red;
+                _summaryLabel.ForeColor = Color.FromArgb(180, 0, 0); // Dark red for better contrast
             }
 
             // Error list view

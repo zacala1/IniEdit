@@ -42,10 +42,25 @@ namespace IniEdit
             ThrowError
         }
 
+        private char[] _commentPrefixChars = DefaultCommentPrefixChars;
+
         /// <summary>
         /// Gets or sets the allowed comment prefix characters (e.g., ';' and '#').
         /// </summary>
-        public char[] CommentPrefixChars { get; set; }
+        /// <exception cref="ArgumentNullException">Thrown when value is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when value is an empty array.</exception>
+        public char[] CommentPrefixChars
+        {
+            get => _commentPrefixChars;
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException(nameof(value), "CommentPrefixChars cannot be null.");
+                if (value.Length == 0)
+                    throw new ArgumentException("CommentPrefixChars cannot be empty.", nameof(value));
+                _commentPrefixChars = value;
+            }
+        }
 
         /// <summary>
         /// Gets or sets the default comment prefix character used when writing comments.
@@ -110,8 +125,8 @@ namespace IniEdit
         /// </summary>
         public IniConfigOption()
         {
-            CommentPrefixChars = new char[] { ';', '#' };
-            DefaultCommentPrefixChar = ';';
+            // CommentPrefixChars is initialized via backing field to DefaultCommentPrefixChars
+            DefaultCommentPrefixChar = DefaultCommentPrefix;
             DuplicateKeyPolicy = DuplicateKeyPolicyType.FirstWin;
             DuplicateSectionPolicy = DuplicateSectionPolicyType.FirstWin;
             CollectParsingErrors = false;

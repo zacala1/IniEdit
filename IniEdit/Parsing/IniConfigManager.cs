@@ -29,11 +29,14 @@ namespace IniEdit
 
         /// <summary>
         /// Reports a parsing error by invoking the event and optionally collecting the error.
+        /// Thread-safe: copies event handler reference before invocation.
         /// </summary>
         private static void ReportError(Document doc, IniConfigOption option, int lineNumber, string line, string reason)
         {
             var error = new ParsingErrorEventArgs(lineNumber, line, reason);
-            ParsingError?.Invoke(null, error);
+            // Thread-safe event invocation: copy to local variable first
+            var handler = ParsingError;
+            handler?.Invoke(null, error);
             if (option.CollectParsingErrors)
                 doc.AddParsingError(error);
         }
@@ -110,6 +113,17 @@ namespace IniEdit
             }
         }
 
+        /// <summary>
+        /// Loads an INI configuration file from the specified path using UTF-8 encoding.
+        /// </summary>
+        /// <param name="filePath">The path to the INI file.</param>
+        /// <param name="option">Optional configuration options.</param>
+        /// <returns>The loaded document.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
+        /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist.</exception>
+        /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
+        /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
+        /// <exception cref="IOException">Thrown when an I/O error occurs while opening the file.</exception>
         public static Document Load(string filePath, IniConfigOption? option = null)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -119,6 +133,19 @@ namespace IniEdit
             return Load(fileStream, Encoding.UTF8, option);
         }
 
+        /// <summary>
+        /// Loads an INI configuration file from the specified path using the specified encoding.
+        /// </summary>
+        /// <param name="filePath">The path to the INI file.</param>
+        /// <param name="encoding">The text encoding to use.</param>
+        /// <param name="option">Optional configuration options.</param>
+        /// <returns>The loaded document.</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="encoding"/> is null.</exception>
+        /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist.</exception>
+        /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
+        /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
+        /// <exception cref="IOException">Thrown when an I/O error occurs while opening the file.</exception>
         public static Document Load(string filePath, Encoding encoding, IniConfigOption? option = null)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -130,6 +157,16 @@ namespace IniEdit
             return Load(fileStream, encoding, option);
         }
 
+        /// <summary>
+        /// Loads an INI configuration from a stream using the specified encoding.
+        /// </summary>
+        /// <param name="stream">The stream to read from.</param>
+        /// <param name="encoding">The text encoding to use.</param>
+        /// <param name="option">Optional configuration options.</param>
+        /// <returns>The loaded document.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> or <paramref name="encoding"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the stream is not readable.</exception>
+        /// <exception cref="IOException">Thrown when an I/O error occurs while reading the stream.</exception>
         public static Document Load(Stream stream, Encoding encoding, IniConfigOption? option = null)
         {
             if (stream == null)
@@ -563,15 +600,38 @@ namespace IniEdit
             }
         }
 
+        /// <summary>
+        /// Saves an INI configuration document to the specified path using UTF-8 encoding.
+        /// </summary>
+        /// <param name="filePath">The path where the file will be saved.</param>
+        /// <param name="document">The document to save.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="document"/> is null.</exception>
+        /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
+        /// <exception cref="UnauthorizedAccessException">Thrown when access to the file or directory is denied.</exception>
+        /// <exception cref="IOException">Thrown when an I/O error occurs while writing the file.</exception>
+        /// <remarks>
+        /// This method uses atomic write (write to temp file, then replace) to prevent data loss.
+        /// </remarks>
         public static void Save(string filePath, Document document)
         {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
-
-            using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            Save(fileStream, Encoding.UTF8, document);
+            Save(filePath, Encoding.UTF8, document);
         }
 
+        /// <summary>
+        /// Saves an INI configuration document to the specified path using the specified encoding.
+        /// </summary>
+        /// <param name="filePath">The path where the file will be saved.</param>
+        /// <param name="encoding">The text encoding to use.</param>
+        /// <param name="document">The document to save.</param>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="encoding"/> or <paramref name="document"/> is null.</exception>
+        /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
+        /// <exception cref="UnauthorizedAccessException">Thrown when access to the file or directory is denied.</exception>
+        /// <exception cref="IOException">Thrown when an I/O error occurs while writing the file.</exception>
+        /// <remarks>
+        /// This method uses atomic write (write to temp file, then replace) to prevent data loss.
+        /// </remarks>
         public static void Save(string filePath, Encoding encoding, Document document)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -579,10 +639,46 @@ namespace IniEdit
             if (encoding == null)
                 throw new ArgumentNullException(nameof(encoding));
 
-            using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            Save(fileStream, encoding, document);
+            // Use atomic write: write to temp file first, then replace original
+            var directory = Path.GetDirectoryName(filePath) ?? ".";
+            var tempFilePath = Path.Combine(directory, $".{Path.GetFileName(filePath)}.{Guid.NewGuid():N}.tmp");
+
+            try
+            {
+                // Write to temporary file
+                using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    Save(fileStream, encoding, document);
+                }
+
+                // Replace original file with temp file (atomic on most file systems)
+                File.Move(tempFilePath, filePath, overwrite: true);
+            }
+            catch
+            {
+                // Clean up temp file if something went wrong
+                try
+                {
+                    if (File.Exists(tempFilePath))
+                        File.Delete(tempFilePath);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+                throw;
+            }
         }
 
+        /// <summary>
+        /// Saves an INI configuration document to a stream using the specified encoding.
+        /// </summary>
+        /// <param name="stream">The stream to write to.</param>
+        /// <param name="encoding">The text encoding to use.</param>
+        /// <param name="document">The document to save.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/>, <paramref name="encoding"/>, or <paramref name="document"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the stream is not writable.</exception>
+        /// <exception cref="IOException">Thrown when an I/O error occurs while writing to the stream.</exception>
         public static void Save(Stream stream, Encoding encoding, Document document)
         {
             if (stream == null)
@@ -607,7 +703,8 @@ namespace IniEdit
 
                 var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
-                writer.Write($"{property.Name} = ");
+                writer.Write(property.Name);
+                writer.Write(" = ");
                 if (shouldQuote)
                 {
                     writer.Write('"');
@@ -620,7 +717,9 @@ namespace IniEdit
                 }
                 if (!string.IsNullOrEmpty(property.Comment?.Value))
                 {
-                    writer.Write($" {document.DefaultCommentPrefixChar}{property.Comment.Value}");
+                    writer.Write(' ');
+                    writer.Write(document.DefaultCommentPrefixChar);
+                    writer.Write(property.Comment.Value);
                 }
                 writer.WriteLine();
             }
@@ -642,10 +741,14 @@ namespace IniEdit
                 }
 
                 // Write section with inline comment
-                writer.Write($"[{section.Name}]");
+                writer.Write('[');
+                writer.Write(section.Name);
+                writer.Write(']');
                 if (!string.IsNullOrEmpty(section.Comment?.Value))
                 {
-                    writer.Write($" {document.DefaultCommentPrefixChar}{section.Comment.Value}");
+                    writer.Write(' ');
+                    writer.Write(document.DefaultCommentPrefixChar);
+                    writer.Write(section.Comment.Value);
                 }
 
                 // Write properties
@@ -660,7 +763,8 @@ namespace IniEdit
 
                     var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
-                    writer.Write($"{property.Name} = ");
+                    writer.Write(property.Name);
+                    writer.Write(" = ");
                     if (shouldQuote)
                     {
                         writer.Write('"');
@@ -673,7 +777,9 @@ namespace IniEdit
                     }
                     if (!string.IsNullOrEmpty(property.Comment?.Value))
                     {
-                        writer.Write($" {document.DefaultCommentPrefixChar}{property.Comment.Value}");
+                        writer.Write(' ');
+                        writer.Write(document.DefaultCommentPrefixChar);
+                        writer.Write(property.Comment.Value);
                     }
                 }
 
@@ -1043,7 +1149,8 @@ namespace IniEdit
 
                 var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
-                await writer.WriteAsync($"{property.Name} = ").ConfigureAwait(false);
+                await writer.WriteAsync(property.Name).ConfigureAwait(false);
+                await writer.WriteAsync(" = ").ConfigureAwait(false);
                 if (shouldQuote)
                 {
                     await writer.WriteAsync('"').ConfigureAwait(false);
@@ -1056,7 +1163,9 @@ namespace IniEdit
                 }
                 if (!string.IsNullOrEmpty(property.Comment?.Value))
                 {
-                    await writer.WriteAsync($" {document.DefaultCommentPrefixChar}{property.Comment.Value}").ConfigureAwait(false);
+                    await writer.WriteAsync(' ').ConfigureAwait(false);
+                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
+                    await writer.WriteAsync(property.Comment.Value).ConfigureAwait(false);
                 }
                 await writer.WriteLineAsync().ConfigureAwait(false);
             }
@@ -1078,10 +1187,14 @@ namespace IniEdit
                 }
 
                 // Write section with inline comment
-                await writer.WriteAsync($"[{section.Name}]").ConfigureAwait(false);
+                await writer.WriteAsync('[').ConfigureAwait(false);
+                await writer.WriteAsync(section.Name).ConfigureAwait(false);
+                await writer.WriteAsync(']').ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(section.Comment?.Value))
                 {
-                    await writer.WriteAsync($" {document.DefaultCommentPrefixChar}{section.Comment.Value}").ConfigureAwait(false);
+                    await writer.WriteAsync(' ').ConfigureAwait(false);
+                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
+                    await writer.WriteAsync(section.Comment.Value).ConfigureAwait(false);
                 }
 
                 // Write properties
@@ -1096,7 +1209,8 @@ namespace IniEdit
 
                     var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
-                    await writer.WriteAsync($"{property.Name} = ").ConfigureAwait(false);
+                    await writer.WriteAsync(property.Name).ConfigureAwait(false);
+                    await writer.WriteAsync(" = ").ConfigureAwait(false);
                     if (shouldQuote)
                     {
                         await writer.WriteAsync('"').ConfigureAwait(false);
@@ -1109,7 +1223,9 @@ namespace IniEdit
                     }
                     if (!string.IsNullOrEmpty(property.Comment?.Value))
                     {
-                        await writer.WriteAsync($" {document.DefaultCommentPrefixChar}{property.Comment.Value}").ConfigureAwait(false);
+                        await writer.WriteAsync(' ').ConfigureAwait(false);
+                        await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
+                        await writer.WriteAsync(property.Comment.Value).ConfigureAwait(false);
                     }
                 }
 
