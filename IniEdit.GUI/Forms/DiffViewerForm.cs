@@ -326,7 +326,7 @@ namespace IniEdit.GUI.Forms
                             ImageKey = "added",
                             SelectedImageKey = "added",
                             Tag = new DiffItem(DiffItemType.AddedProperty, sectionDiff.SectionName, prop.Name, prop),
-                            ForeColor = Color.Green
+                            ForeColor = Color.FromArgb(0, 128, 0) // Dark green for better contrast
                         };
                         sectionNode.Nodes.Add(propNode);
                     }
@@ -339,7 +339,7 @@ namespace IniEdit.GUI.Forms
                             ImageKey = "removed",
                             SelectedImageKey = "removed",
                             Tag = new DiffItem(DiffItemType.RemovedProperty, sectionDiff.SectionName, prop.Name, prop),
-                            ForeColor = Color.Red
+                            ForeColor = Color.FromArgb(180, 0, 0) // Dark red for better contrast
                         };
                         sectionNode.Nodes.Add(propNode);
                     }
@@ -352,7 +352,7 @@ namespace IniEdit.GUI.Forms
                             ImageKey = "modified",
                             SelectedImageKey = "modified",
                             Tag = new DiffItem(DiffItemType.ModifiedProperty, sectionDiff.SectionName, propDiff.PropertyName, propDiff),
-                            ForeColor = Color.Orange
+                            ForeColor = Color.FromArgb(180, 90, 0) // Dark orange for better contrast
                         };
                         sectionNode.Nodes.Add(propNode);
                     }

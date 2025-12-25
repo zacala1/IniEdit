@@ -28,7 +28,9 @@
       "Bash(findstr:*)",
       "Bash(tree:*)",
       "Bash(dir:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 다크 모드, Diff/Merge, Export, Schema 검증 기능 추가\n\n주요 기능:\n- ThemeManager: 다크/라이트 테마 지원 및 설정 저장\n- DiffViewerForm: 문서 비교 및 선택적 병합 UI\n- DocumentExporter: JSON, XML, CSV 내보내기\n- IniSchema: 스키마 기반 문서 검증\n\nGUI 개선:\n- AutoScale 설정 추가 \\(DPI 스케일링 지원\\)\n- null 참조 예외 방어 코드 추가\n- DefaultSection.Clear\\(\\)에 Undo/Redo 지원\n- 이벤트 핸들러 정리 \\(메모리 누수 방지\\)\n\n새 Command 추가:\n- GenericCommand, MoveSectionCommand, MovePropertyCommand\n- SortSectionsCommand, SortPropertiesCommand\n\n테스트: 669개 중 665개 통과\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: UI 개선 - 색상 대비 및 다중 선택 지원\n\n색상 대비 개선 \\(WCAG AA 기준\\):\n- DiffViewerForm: Green/Red/Orange → 어두운 색상으로 변경\n- MainForm: Blue/Red 라벨 색상 대비 개선\n\n다중 선택 기능:\n- DeleteKeyValue: 여러 속성 동시 삭제 지원\n- GenericCommand를 사용한 배치 삭제 Undo/Redo 지원\n\n테스트: 669개 중 665개 통과\nEOF\n\\)\")"
     ]
   }
 }

@@ -962,21 +962,54 @@ namespace IniEdit.GUI
             if (propertyView.SelectedItems.Count == 0)
                 return;
 
-            var selectedItem = propertyView.SelectedItems[0];
-            string key = selectedItem.SubItems[0].Text;
             var selectedSection = GetSelectedSection();
+            int count = propertyView.SelectedItems.Count;
 
-            if (MessageBox.Show($"Are you sure you want to delete key '{key}'?",
-                "Confirm Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            string confirmMessage = count == 1
+                ? $"Are you sure you want to delete key '{propertyView.SelectedItems[0].SubItems[0].Text}'?"
+                : $"Are you sure you want to delete {count} selected keys?";
+
+            if (MessageBox.Show(confirmMessage, "Confirm Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                var property = selectedSection[key];
-                int index = GetPropertyIndex(selectedSection, key);
+                // Collect all properties to delete (in reverse order to preserve indices)
+                var itemsToDelete = new List<(Property property, int index)>();
+                foreach (ListViewItem item in propertyView.SelectedItems)
+                {
+                    string key = item.SubItems[0].Text;
+                    var property = selectedSection[key];
+                    int index = GetPropertyIndex(selectedSection, key);
+                    itemsToDelete.Add((property, index));
+                }
 
-                var command = new DeletePropertyCommand(
-                    selectedSection,
-                    property,
-                    index,
-                    () => { RefreshKeyValueList(selectedSection.Name); RefreshStatusBar(); });
+                // Sort by index descending so we delete from bottom to top
+                itemsToDelete = itemsToDelete.OrderByDescending(x => x.index).ToList();
+
+                // Create a batch delete command
+                var savedProperties = itemsToDelete.Select(x => (x.property.Clone(), x.index)).ToList();
+                var command = new GenericCommand(
+                    $"Delete {count} Properties",
+                    () =>
+                    {
+                        foreach (var (property, _) in itemsToDelete)
+                        {
+                            selectedSection.RemoveProperty(property.Name);
+                        }
+                        RefreshKeyValueList(selectedSection.Name);
+                        RefreshStatusBar();
+                    },
+                    () =>
+                    {
+                        // Restore in original order (ascending index)
+                        foreach (var (property, index) in savedProperties.OrderBy(x => x.index))
+                        {
+                            if (index >= 0 && index <= selectedSection.PropertyCount)
+                                selectedSection.InsertProperty(index, property);
+                            else
+                                selectedSection.AddProperty(property);
+                        }
+                        RefreshKeyValueList(selectedSection.Name);
+                        RefreshStatusBar();
+                    });
                 _commandManager.ExecuteCommand(command);
                 SetDirty();
             }
@@ -2888,7 +2921,7 @@ namespace IniEdit.GUI
                 Text = $"Current encoding: {EncodingHelper.GetEncodingName(_currentEncoding)}",
                 Location = new Point(10, 35),
                 Size = new Size(400, 20),
-                ForeColor = Color.Blue
+                ForeColor = Color.FromArgb(0, 0, 139) // Dark blue for better contrast
             };
 
             var encodingComboBox = new ComboBox
@@ -2921,7 +2954,7 @@ namespace IniEdit.GUI
                 Text = "⚠ Warning: Changing encoding will reload the file and may lose unsaved changes.",
                 Location = new Point(10, 100),
                 Size = new Size(410, 40),
-                ForeColor = Color.Red,
+                ForeColor = Color.FromArgb(180, 0, 0), // Dark red for better contrast
                 Font = new Font(Font.FontFamily, 8)
             };
 
