@@ -234,6 +234,50 @@ namespace IniEdit.GUI
                 Paste(sender, e);
                 e.Handled = true;
             }
+            // Delete: Delete key
+            else if (e.KeyCode == Keys.Delete && !e.Control && !e.Alt)
+            {
+                // Only handle if not in a text editing mode
+                if (ActiveControl != preCommentsTextBox && ActiveControl != inlineCommentTextBox)
+                {
+                    if (propertyView.Focused && propertyView.SelectedItems.Count > 0)
+                    {
+                        DeleteKeyValue(sender, e);
+                        e.Handled = true;
+                    }
+                    else if (sectionView.Focused && sectionView.SelectedIndex > 0)
+                    {
+                        DeleteSection(sender, e);
+                        e.Handled = true;
+                    }
+                }
+            }
+            // F2: Edit selected item
+            else if (e.KeyCode == Keys.F2 && !e.Control && !e.Alt && !e.Shift)
+            {
+                if (propertyView.Focused && propertyView.SelectedItems.Count == 1)
+                {
+                    EditKeyValue(sender, e);
+                    e.Handled = true;
+                }
+                else if (sectionView.Focused && sectionView.SelectedIndex > 0)
+                {
+                    EditSection(sender, e);
+                    e.Handled = true;
+                }
+            }
+            // Select All: Ctrl+A
+            else if (e.Control && e.KeyCode == Keys.A && !e.Shift && !e.Alt)
+            {
+                if (propertyView.Focused)
+                {
+                    foreach (ListViewItem item in propertyView.Items)
+                    {
+                        item.Selected = true;
+                    }
+                    e.Handled = true;
+                }
+            }
         }
 
         private void SetupMenuItems()
@@ -304,6 +348,10 @@ namespace IniEdit.GUI
             var duplicateSectionMenu = new ToolStripMenuItem("Duplicate Section");
             var sortSectionsMenu = new ToolStripMenuItem("Sort Sections");
 
+            // Show shortcut hints (handled by OnFormKeyDown)
+            editSectionMenu.ShortcutKeyDisplayString = "F2";
+            deleteSectionMenu.ShortcutKeyDisplayString = "Del";
+
             addSectionMenu.Click += AddSection;
             editSectionMenu.Click += EditSection;
             deleteSectionMenu.Click += DeleteSection;
@@ -331,6 +379,10 @@ namespace IniEdit.GUI
             var moveKeyDownMenu = new ToolStripMenuItem("Move Key Down");
             var duplicateKeyMenu = new ToolStripMenuItem("Duplicate Key");
             var sortKeysMenu = new ToolStripMenuItem("Sort Keys");
+
+            // Show shortcut hints (handled by OnFormKeyDown)
+            editKeyValueMenu.ShortcutKeyDisplayString = "F2";
+            deleteKeyValueMenu.ShortcutKeyDisplayString = "Del";
 
             addKeyValueMenu.Click += AddKeyValue;
             editKeyValueMenu.Click += EditKeyValue;
