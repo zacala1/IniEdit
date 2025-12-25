@@ -285,6 +285,12 @@ namespace IniEdit.GUI
                     e.Handled = true;
                 }
             }
+            // Go to Section: Ctrl+G
+            else if (e.Control && e.KeyCode == Keys.G && !e.Shift && !e.Alt)
+            {
+                GoToSection();
+                e.Handled = true;
+            }
         }
 
         private void SetupMenuItems()
@@ -414,6 +420,11 @@ namespace IniEdit.GUI
             findReplaceMenu.ShortcutKeys = Keys.Control | Keys.F;
             findReplaceMenu.Click += OpenFindReplace;
 
+            // Go to Section menu
+            var goToSectionMenu = new ToolStripMenuItem("&Go to Section...");
+            goToSectionMenu.ShortcutKeys = Keys.Control | Keys.G;
+            goToSectionMenu.Click += (s, e) => GoToSection();
+
             editMenu.DropDownItems.AddRange(new ToolStripItem[]
             {
                 _undoMenuItem,
@@ -424,6 +435,7 @@ namespace IniEdit.GUI
                 _pasteMenuItem,
                 new ToolStripSeparator(),
                 findReplaceMenu,
+                goToSectionMenu,
                 new ToolStripSeparator(),
                 sectionMenu,
                 keyValueMenu
@@ -1985,6 +1997,88 @@ namespace IniEdit.GUI
                     MessageBox.Show("Settings saved. New settings will be applied when loading files.",
                         "Settings", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
+            }
+        }
+        #endregion
+
+        #region Go to Section
+        private void GoToSection()
+        {
+            if (_documentConfig == null || sectionView.Items.Count == 0)
+                return;
+
+            using var dialog = new Form
+            {
+                Text = "Go to Section",
+                Size = new Size(400, 150),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var label = new Label
+            {
+                Text = "Select section:",
+                Location = new Point(12, 15),
+                AutoSize = true
+            };
+
+            var comboBox = new ComboBox
+            {
+                Location = new Point(12, 35),
+                Size = new Size(360, 23),
+                DropDownStyle = ComboBoxStyle.DropDown,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                AutoCompleteSource = AutoCompleteSource.ListItems
+            };
+
+            foreach (var item in sectionView.Items)
+            {
+                comboBox.Items.Add(item?.ToString() ?? "");
+            }
+
+            if (sectionView.SelectedIndex >= 0)
+                comboBox.SelectedIndex = sectionView.SelectedIndex;
+
+            var okButton = new Button
+            {
+                Text = "Go",
+                DialogResult = DialogResult.OK,
+                Location = new Point(216, 70),
+                Size = new Size(75, 23)
+            };
+
+            var cancelButton = new Button
+            {
+                Text = "Cancel",
+                DialogResult = DialogResult.Cancel,
+                Location = new Point(297, 70),
+                Size = new Size(75, 23)
+            };
+
+            dialog.Controls.AddRange(new Control[] { label, comboBox, okButton, cancelButton });
+            dialog.AcceptButton = okButton;
+            dialog.CancelButton = cancelButton;
+
+            if (dialog.ShowDialog(this) == DialogResult.OK && comboBox.SelectedIndex >= 0)
+            {
+                sectionView.SelectedIndex = comboBox.SelectedIndex;
+                sectionView.Focus();
+            }
+            else if (dialog.DialogResult == DialogResult.OK && !string.IsNullOrEmpty(comboBox.Text))
+            {
+                // Try to find section by name
+                for (int i = 0; i < sectionView.Items.Count; i++)
+                {
+                    if (sectionView.Items[i].ToString()?.Equals(comboBox.Text, StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        sectionView.SelectedIndex = i;
+                        sectionView.Focus();
+                        return;
+                    }
+                }
+                MessageBox.Show($"Section '{comboBox.Text}' not found.", "Go to Section", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
         #endregion
