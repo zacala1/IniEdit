@@ -139,6 +139,9 @@ namespace IniEdit.GUI
             // Setup file drag & drop from Explorer
             SetupFileDragDrop();
 
+            // Handle resize to adjust columns
+            propertyView.Resize += (s, e) => AutoResizeColumns();
+
             RefreshStatusBar();
         }
 
@@ -524,6 +527,33 @@ namespace IniEdit.GUI
                     item.ToolTipText = "⚠ Duplicate key detected!";
                 }
             }
+
+            // Auto-resize columns to fit content
+            AutoResizeColumns();
+        }
+
+        private void AutoResizeColumns()
+        {
+            if (propertyView.Items.Count == 0)
+            {
+                // Use fixed widths for empty list
+                keyHeader.Width = 200;
+                valueHeader.Width = Math.Max(350, propertyView.ClientSize.Width - 210);
+                return;
+            }
+
+            // Auto-resize based on content
+            keyHeader.Width = -2; // Auto-size to header and content
+            valueHeader.Width = -2;
+
+            // Ensure minimum widths
+            if (keyHeader.Width < 100) keyHeader.Width = 100;
+            if (valueHeader.Width < 150) valueHeader.Width = 150;
+
+            // If total width is less than available space, expand value column
+            int availableWidth = propertyView.ClientSize.Width - keyHeader.Width - 25; // 25 for scrollbar
+            if (valueHeader.Width < availableWidth)
+                valueHeader.Width = availableWidth;
         }
 
         private void RefreshStatusBar()
