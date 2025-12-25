@@ -136,6 +136,9 @@ namespace IniEdit.GUI
             // Setup drag & drop for reordering
             SetupDragDrop();
 
+            // Setup file drag & drop from Explorer
+            SetupFileDragDrop();
+
             RefreshStatusBar();
         }
 
@@ -2735,6 +2738,42 @@ namespace IniEdit.GUI
                 section.AddProperty(p);
 
             RefreshKeyValueList(sectionName);
+        }
+
+        private void SetupFileDragDrop()
+        {
+            this.AllowDrop = true;
+            this.DragEnter += MainForm_DragEnter;
+            this.DragDrop += MainForm_DragDrop;
+        }
+
+        private void MainForm_DragEnter(object? sender, DragEventArgs e)
+        {
+            if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
+            {
+                var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files?.Length > 0 && files[0].EndsWith(".ini", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.Effect = DragDropEffects.Copy;
+                    return;
+                }
+            }
+            e.Effect = DragDropEffects.None;
+        }
+
+        private void MainForm_DragDrop(object? sender, DragEventArgs e)
+        {
+            if (e.Data?.GetDataPresent(DataFormats.FileDrop) != true)
+                return;
+
+            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (files?.Length > 0 && files[0].EndsWith(".ini", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!PromptSaveChanges())
+                    return;
+
+                LoadFile(files[0]);
+            }
         }
 
         #endregion
