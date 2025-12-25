@@ -68,11 +68,14 @@ namespace IniEdit.GUI
         // Auto-backup
         private System.Windows.Forms.Timer? _autoBackupTimer;
         private DateTime _lastAutoBackupTime = DateTime.MinValue;
+        private const int AutoBackupCheckIntervalMs = 60000; // 1 minute
+        private const int MaxBackupFilesToKeep = 10;
 
         // TreeView mode
         private TreeView? _sectionTreeView;
         private ToolStripMenuItem? _treeViewModeMenuItem;
         private ToolStripMenuItem? _autoBackupMenuItem;
+        private bool _windowStateRestored = false;
         #endregion
 
         public MainForm()
@@ -2222,8 +2225,21 @@ namespace IniEdit.GUI
             if (_autoBackupTimer != null)
             {
                 _autoBackupTimer.Stop();
+                _autoBackupTimer.Tick -= OnAutoBackupTick;
                 _autoBackupTimer.Dispose();
                 _autoBackupTimer = null;
+            }
+
+            // Cleanup TreeView if in tree mode
+            if (_sectionTreeView != null)
+            {
+                _sectionTreeView.AfterSelect -= OnTreeViewSectionSelected;
+                _sectionTreeView.NodeMouseDoubleClick -= OnTreeViewNodeDoubleClick;
+                var contextMenu = _sectionTreeView.ContextMenuStrip;
+                _sectionTreeView.ContextMenuStrip = null;
+                contextMenu?.Dispose();
+                _sectionTreeView.Dispose();
+                _sectionTreeView = null;
             }
         }
         #endregion
@@ -2273,26 +2289,37 @@ namespace IniEdit.GUI
                     this.WindowState = settings.WindowState;
                 }
 
-                // Restore splitter distances after form is shown
-                this.Shown += (s, e) =>
+                // Restore splitter distances after form is shown (only once)
+                if (!_windowStateRestored)
                 {
-                    try
-                    {
-                        if (settings.SplitterDistance1 > 0 && settings.SplitterDistance1 < splitContainer1.Width)
-                            splitContainer1.SplitterDistance = settings.SplitterDistance1;
-
-                        if (settings.SplitterDistance2 > 0 && settings.SplitterDistance2 < splitContainer2.Height)
-                            splitContainer2.SplitterDistance = settings.SplitterDistance2;
-                    }
-                    catch
-                    {
-                        // Ignore splitter distance errors
-                    }
-                };
+                    _windowStateRestored = true;
+                    this.Shown += OnFormShownRestoreSplitters;
+                }
             }
             catch
             {
                 // If settings fail to load, use defaults
+            }
+        }
+
+        private void OnFormShownRestoreSplitters(object? sender, EventArgs e)
+        {
+            // Unsubscribe immediately to prevent duplicate calls
+            this.Shown -= OnFormShownRestoreSplitters;
+
+            try
+            {
+                var settings = Properties.Settings.Default;
+
+                if (settings.SplitterDistance1 > 0 && settings.SplitterDistance1 < splitContainer1.Width)
+                    splitContainer1.SplitterDistance = settings.SplitterDistance1;
+
+                if (settings.SplitterDistance2 > 0 && settings.SplitterDistance2 < splitContainer2.Height)
+                    splitContainer2.SplitterDistance = settings.SplitterDistance2;
+            }
+            catch
+            {
+                // Ignore splitter distance errors
             }
         }
 
@@ -2336,7 +2363,7 @@ namespace IniEdit.GUI
         {
             _autoBackupTimer = new System.Windows.Forms.Timer
             {
-                Interval = 60000 // Check every minute
+                Interval = AutoBackupCheckIntervalMs
             };
             _autoBackupTimer.Tick += OnAutoBackupTick;
 
@@ -2403,14 +2430,20 @@ namespace IniEdit.GUI
             try
             {
                 var pattern = $"{fileName}_*{ext}.bak";
-                var backupFiles = Directory.GetFiles(backupDir, pattern)
+                var filesToDelete = Directory.GetFiles(backupDir, pattern)
                     .OrderByDescending(f => f)
-                    .Skip(10) // Keep only the 10 most recent
-                    .ToList();
+                    .Skip(MaxBackupFilesToKeep);
 
-                foreach (var file in backupFiles)
+                foreach (var file in filesToDelete)
                 {
-                    File.Delete(file);
+                    try
+                    {
+                        File.Delete(file);
+                    }
+                    catch
+                    {
+                        // Ignore individual file deletion errors
+                    }
                 }
             }
             catch
@@ -2486,6 +2519,16 @@ namespace IniEdit.GUI
             if (_sectionTreeView == null)
                 return;
 
+            // Unsubscribe event handlers
+            _sectionTreeView.AfterSelect -= OnTreeViewSectionSelected;
+            _sectionTreeView.NodeMouseDoubleClick -= OnTreeViewNodeDoubleClick;
+
+            // Dispose context menu
+            var contextMenu = _sectionTreeView.ContextMenuStrip;
+            _sectionTreeView.ContextMenuStrip = null;
+            contextMenu?.Dispose();
+
+            // Remove and dispose TreeView
             splitContainer1.Panel1.Controls.Remove(_sectionTreeView);
             _sectionTreeView.Dispose();
             _sectionTreeView = null;
@@ -2546,10 +2589,17 @@ namespace IniEdit.GUI
                 var currentNodes = _sectionTreeView.Nodes;
                 TreeNode? parentNode = null;
 
+                // Build partial name incrementally to avoid O(n²) string.Join
+                var partialNameBuilder = new StringBuilder();
+
                 for (int i = 0; i < parts.Length; i++)
                 {
-                    var partName = string.Join(separator, parts.Take(i + 1));
                     var displayName = parts[i];
+
+                    // Build partial name incrementally
+                    if (i > 0)
+                        partialNameBuilder.Append(separator);
+                    partialNameBuilder.Append(displayName);
 
                     // Look for existing node at this level
                     TreeNode? existingNode = null;
@@ -2580,7 +2630,8 @@ namespace IniEdit.GUI
                         else
                         {
                             // Intermediate node - might represent a section or just a path
-                            var matchingSection = _documentConfig.FirstOrDefault(s => s.Name == partName);
+                            var partialName = partialNameBuilder.ToString();
+                            var matchingSection = _documentConfig.GetSection(partialName);
                             newNode.Tag = matchingSection;
                         }
 
