@@ -57,6 +57,10 @@ namespace IniEdit.GUI
         private Font? _duplicateKeyFont;
         private DocumentStatistics? _cachedStatistics;
         private bool _statisticsDirty = true;
+
+        // Section filter
+        private TextBox? _sectionFilterBox;
+        private List<string> _allSectionNames = new();
         #endregion
 
         public MainForm()
@@ -139,10 +143,78 @@ namespace IniEdit.GUI
             // Setup file drag & drop from Explorer
             SetupFileDragDrop();
 
+            // Setup section filter
+            SetupSectionFilter();
+
             // Handle resize to adjust columns
             propertyView.Resize += (s, e) => AutoResizeColumns();
 
             RefreshStatusBar();
+        }
+
+        private void SetupSectionFilter()
+        {
+            _sectionFilterBox = new TextBox
+            {
+                Dock = DockStyle.Top,
+                Font = new Font("Segoe UI", 9F),
+                PlaceholderText = "Filter sections..."
+            };
+
+            _sectionFilterBox.TextChanged += OnSectionFilterChanged;
+            _sectionFilterBox.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    _sectionFilterBox.Text = "";
+                    sectionView.Focus();
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Down && sectionView.Items.Count > 0)
+                {
+                    sectionView.Focus();
+                    if (sectionView.SelectedIndex < 0)
+                        sectionView.SelectedIndex = 0;
+                    e.Handled = true;
+                }
+            };
+
+            // Insert after label but before sectionView
+            splitContainer1.Panel1.Controls.Add(_sectionFilterBox);
+            _sectionFilterBox.BringToFront();
+            sectionView.BringToFront();
+        }
+
+        private void OnSectionFilterChanged(object? sender, EventArgs e)
+        {
+            if (_documentConfig == null || _sectionFilterBox == null)
+                return;
+
+            string filter = _sectionFilterBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(filter))
+            {
+                // Restore all sections
+                RefreshSectionList();
+                return;
+            }
+
+            // Filter sections
+            sectionView.BeginUpdate();
+            sectionView.Items.Clear();
+
+            foreach (var name in _allSectionNames)
+            {
+                if (name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                {
+                    sectionView.Items.Add(name);
+                }
+            }
+
+            sectionView.EndUpdate();
+
+            if (sectionView.Items.Count > 0)
+                sectionView.SelectedIndex = 0;
         }
 
         private void SetupStatusBar()
@@ -506,11 +578,24 @@ namespace IniEdit.GUI
             if (_documentConfig == null)
                 return;
 
-            sectionView.Items.Clear();
-            sectionView.Items.Add(GetGlobalSectionName());
+            // Build the complete list of section names for filtering
+            _allSectionNames.Clear();
+            _allSectionNames.Add(GetGlobalSectionName());
             foreach (var section in _documentConfig)
             {
-                sectionView.Items.Add(section.Name);
+                _allSectionNames.Add(section.Name);
+            }
+
+            // Clear filter when refreshing
+            if (_sectionFilterBox != null && !string.IsNullOrEmpty(_sectionFilterBox.Text))
+            {
+                _sectionFilterBox.Text = "";
+            }
+
+            sectionView.Items.Clear();
+            foreach (var name in _allSectionNames)
+            {
+                sectionView.Items.Add(name);
             }
         }
 
