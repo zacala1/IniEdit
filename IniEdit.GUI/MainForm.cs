@@ -120,6 +120,7 @@ namespace IniEdit.GUI
             saveToolStripMenuItem.Click += SaveFile;
             saveAsToolStripMenuItem.Click += SaveAsFile;
             sectionView.SelectedIndexChanged += OnSectionSelectionChanged;
+            sectionView.DoubleClick += OnSectionDoubleClick;
             propertyView.MouseDoubleClick += OnPropertyDoubleClick;
             propertyView.Click += OnPropertyClick;
             preCommentsTextBox.TextChanged += OnPreCommentsChanged;
@@ -1259,6 +1260,15 @@ namespace IniEdit.GUI
             finally
             {
                 _isUpdatingCommentsFromCode = false;
+            }
+        }
+
+        private void OnSectionDoubleClick(object? sender, EventArgs e)
+        {
+            // Allow editing non-default sections (index > 0)
+            if (sectionView.SelectedIndex > 0)
+            {
+                EditSection(sender, e);
             }
         }
 
