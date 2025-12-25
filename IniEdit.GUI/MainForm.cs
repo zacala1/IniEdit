@@ -61,6 +61,9 @@ namespace IniEdit.GUI
         // Section filter
         private TextBox? _sectionFilterBox;
         private List<string> _allSectionNames = new();
+
+        // Property filter
+        private TextBox? _propertyFilterBox;
         #endregion
 
         public MainForm()
@@ -146,6 +149,9 @@ namespace IniEdit.GUI
             // Setup section filter
             SetupSectionFilter();
 
+            // Setup property filter
+            SetupPropertyFilter();
+
             // Handle resize to adjust columns
             propertyView.Resize += (s, e) => AutoResizeColumns();
 
@@ -215,6 +221,72 @@ namespace IniEdit.GUI
 
             if (sectionView.Items.Count > 0)
                 sectionView.SelectedIndex = 0;
+        }
+
+        private void SetupPropertyFilter()
+        {
+            _propertyFilterBox = new TextBox
+            {
+                Dock = DockStyle.Top,
+                Font = new Font("Segoe UI", 9F),
+                PlaceholderText = "Filter properties..."
+            };
+
+            _propertyFilterBox.TextChanged += OnPropertyFilterChanged;
+            _propertyFilterBox.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    _propertyFilterBox.Text = "";
+                    propertyView.Focus();
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Down && propertyView.Items.Count > 0)
+                {
+                    propertyView.Focus();
+                    if (propertyView.SelectedItems.Count == 0)
+                        propertyView.Items[0].Selected = true;
+                    e.Handled = true;
+                }
+            };
+
+            // Insert after label but before propertyView
+            splitContainer2.Panel1.Controls.Add(_propertyFilterBox);
+            _propertyFilterBox.BringToFront();
+            propertyView.BringToFront();
+        }
+
+        private void OnPropertyFilterChanged(object? sender, EventArgs e)
+        {
+            if (_documentConfig == null || _propertyFilterBox == null)
+                return;
+
+            string filter = _propertyFilterBox.Text.Trim();
+            var section = GetSelectedSection();
+
+            if (string.IsNullOrEmpty(filter))
+            {
+                // Restore all properties
+                RefreshKeyValueList(section?.Name ?? "");
+                return;
+            }
+
+            // Filter properties
+            propertyView.BeginUpdate();
+            propertyView.Items.Clear();
+
+            foreach (var property in section)
+            {
+                if (property.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                    property.Value.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                {
+                    var item = propertyView.Items.Add(property.Name);
+                    item.SubItems.Add(property.Value);
+                }
+            }
+
+            propertyView.EndUpdate();
+            AutoResizeColumns();
         }
 
         private void SetupStatusBar()
@@ -1368,6 +1440,12 @@ namespace IniEdit.GUI
         {
             if (sectionView.SelectedItem == null || _documentConfig == null)
                 return;
+
+            // Clear property filter when changing sections
+            if (_propertyFilterBox != null && !string.IsNullOrEmpty(_propertyFilterBox.Text))
+            {
+                _propertyFilterBox.Text = "";
+            }
 
             try
             {
