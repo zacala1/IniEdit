@@ -315,11 +315,16 @@ namespace IniEdit.GUI
                     exportCsvMenu
                 });
 
+                var reloadMenu = new ToolStripMenuItem("&Reload from Disk");
+                reloadMenu.ShortcutKeys = Keys.F5;
+                reloadMenu.Click += ReloadFromDisk;
+
                 fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 1, new ToolStripSeparator());
                 fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 2, exportMenu);
-                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 3, new ToolStripSeparator());
+                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 3, reloadMenu);
+                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 4, new ToolStripSeparator());
                 _recentFilesMenuItem = new ToolStripMenuItem("Recent &Files");
-                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 4, _recentFilesMenuItem);
+                fileToolStripMenuItem.DropDownItems.Insert(saveAsIndex + 5, _recentFilesMenuItem);
             }
             else
             {
@@ -1605,6 +1610,35 @@ namespace IniEdit.GUI
         {
             await LoadIniFileAsync(filePath);
             UpdateTitle();
+        }
+
+        private void ReloadFromDisk(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_currentFilePath))
+            {
+                MessageBox.Show("No file is currently open.", "Reload", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (!File.Exists(_currentFilePath))
+            {
+                MessageBox.Show($"File not found: {_currentFilePath}", "Reload", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (_commandManager.IsDirtyFromSavePoint)
+            {
+                var result = MessageBox.Show(
+                    "You have unsaved changes. Reloading will discard all changes.\n\nDo you want to continue?",
+                    "Reload from Disk",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (result != DialogResult.Yes)
+                    return;
+            }
+
+            LoadFile(_currentFilePath);
         }
 
         private async void SaveFile(object? sender, EventArgs e)
