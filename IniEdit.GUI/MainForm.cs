@@ -2481,10 +2481,16 @@ namespace IniEdit.GUI
             _sectionTreeView.ContextMenuStrip = null;
             contextMenu?.Dispose();
 
+            // Dispose Font before TreeView
+            var font = _sectionTreeView.Font;
+            _sectionTreeView.Font = null;
+            font?.Dispose();
+
             // Remove and dispose TreeView
             splitContainer1.Panel1.Controls.Remove(_sectionTreeView);
             _sectionTreeView.Dispose();
             _sectionTreeView = null;
+            _treeViewBuilder = null;
 
             sectionView.Visible = true;
 

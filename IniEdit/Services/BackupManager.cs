@@ -93,6 +93,8 @@ namespace IniEdit.Services
                 return null;
             if (document == null)
                 return null;
+            if (encoding == null)
+                return null;
 
             try
             {

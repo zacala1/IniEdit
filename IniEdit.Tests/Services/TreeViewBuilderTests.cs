@@ -179,6 +179,50 @@ namespace IniEdit.Tests.Services
             Assert.Throws<ArgumentNullException>(() => builder.BuildTree(null!));
         }
 
+        [Test]
+        public void BuildTree_SectionWithConsecutiveSeparators_SkipsEmptyParts()
+        {
+            var doc = new Document();
+            doc.AddSection(new Section("A..B")); // Consecutive dots
+            var builder = new TreeViewBuilder(".");
+
+            var result = builder.BuildTree(doc);
+
+            // Should have Global + A node (with B as child)
+            Assert.That(result.Count, Is.EqualTo(2));
+            Assert.That(result[1].DisplayName, Is.EqualTo("A"));
+            Assert.That(result[1].Children.Count, Is.EqualTo(1));
+            Assert.That(result[1].Children[0].DisplayName, Is.EqualTo("B"));
+        }
+
+        [Test]
+        public void BuildTree_SectionWithLeadingSeparator_SkipsEmptyParts()
+        {
+            var doc = new Document();
+            doc.AddSection(new Section(".A.B")); // Leading separator
+            var builder = new TreeViewBuilder(".");
+
+            var result = builder.BuildTree(doc);
+
+            Assert.That(result.Count, Is.EqualTo(2));
+            Assert.That(result[1].DisplayName, Is.EqualTo("A"));
+        }
+
+        [Test]
+        public void BuildTree_SectionWithTrailingSeparator_SkipsEmptyParts()
+        {
+            var doc = new Document();
+            doc.AddSection(new Section("A.B.")); // Trailing separator
+            var builder = new TreeViewBuilder(".");
+
+            var result = builder.BuildTree(doc);
+
+            Assert.That(result.Count, Is.EqualTo(2));
+            Assert.That(result[1].DisplayName, Is.EqualTo("A"));
+            Assert.That(result[1].Children[0].DisplayName, Is.EqualTo("B"));
+            Assert.That(result[1].Children[0].Children.Count, Is.EqualTo(0)); // No empty child
+        }
+
         #endregion
 
         #region CountNodes Tests

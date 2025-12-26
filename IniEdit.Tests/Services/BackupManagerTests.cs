@@ -310,6 +310,17 @@ namespace IniEdit.Tests.Services
             Assert.That(result, Is.Null);
         }
 
+        [Test]
+        public void CreateBackup_NullEncoding_ReturnsNull()
+        {
+            var sourceFile = Path.Combine(_testDir, "test.ini");
+            var doc = new Document();
+
+            var result = _backupManager.CreateBackup(sourceFile, doc, null!);
+
+            Assert.That(result, Is.Null);
+        }
+
         #endregion
     }
 }

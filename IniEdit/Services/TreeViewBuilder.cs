@@ -110,7 +110,10 @@ namespace IniEdit.Services
         /// <param name="section">The section to add.</param>
         private void AddSectionToTree(List<TreeNodeData> rootNodes, Section section)
         {
-            var parts = section.Name.Split(new[] { _separator }, StringSplitOptions.None);
+            var parts = section.Name.Split(new[] { _separator }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+                return; // Skip sections with empty names after splitting
+
             var currentLevel = rootNodes;
             var partialNameBuilder = new StringBuilder();
 
