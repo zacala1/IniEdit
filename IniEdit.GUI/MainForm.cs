@@ -10,6 +10,7 @@ using IniEdit;
 using IniEdit.GUI.Commands;
 using IniEdit.GUI.Forms;
 using IniEdit.GUI.Theme;
+using IniEdit.Services;
 
 namespace IniEdit.GUI
 {
@@ -70,9 +71,11 @@ namespace IniEdit.GUI
         private DateTime _lastAutoBackupTime = DateTime.MinValue;
         private const int AutoBackupCheckIntervalMs = 60000; // 1 minute
         private const int MaxBackupFilesToKeep = 10;
+        private readonly BackupManager _backupManager = new(MaxBackupFilesToKeep);
 
         // TreeView mode
         private TreeView? _sectionTreeView;
+        private TreeViewBuilder? _treeViewBuilder;
         private ToolStripMenuItem? _treeViewModeMenuItem;
         private ToolStripMenuItem? _autoBackupMenuItem;
         private bool _windowStateRestored = false;
@@ -2395,60 +2398,10 @@ namespace IniEdit.GUI
             if (_documentConfig == null || string.IsNullOrEmpty(_currentFilePath))
                 return;
 
-            try
+            var backupPath = _backupManager.CreateBackup(_currentFilePath, _documentConfig, _currentEncoding);
+            if (backupPath != null)
             {
-                // Create backup file path
-                var backupDir = Path.Combine(Path.GetDirectoryName(_currentFilePath) ?? ".", ".ini_backup");
-                if (!Directory.Exists(backupDir))
-                {
-                    Directory.CreateDirectory(backupDir);
-                    // Hide the backup directory
-                    File.SetAttributes(backupDir, File.GetAttributes(backupDir) | FileAttributes.Hidden);
-                }
-
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var fileName = Path.GetFileNameWithoutExtension(_currentFilePath);
-                var ext = Path.GetExtension(_currentFilePath);
-                var backupPath = Path.Combine(backupDir, $"{fileName}_{timestamp}{ext}.bak");
-
-                // Write backup
-                IniConfigManager.Save(backupPath, _currentEncoding, _documentConfig);
-
                 _lastAutoBackupTime = DateTime.Now;
-
-                // Clean up old backups (keep only last 10)
-                CleanupOldBackups(backupDir, fileName, ext);
-            }
-            catch
-            {
-                // Silently ignore backup errors
-            }
-        }
-
-        private void CleanupOldBackups(string backupDir, string fileName, string ext)
-        {
-            try
-            {
-                var pattern = $"{fileName}_*{ext}.bak";
-                var filesToDelete = Directory.GetFiles(backupDir, pattern)
-                    .OrderByDescending(f => f)
-                    .Skip(MaxBackupFilesToKeep);
-
-                foreach (var file in filesToDelete)
-                {
-                    try
-                    {
-                        File.Delete(file);
-                    }
-                    catch
-                    {
-                        // Ignore individual file deletion errors
-                    }
-                }
-            }
-            catch
-            {
-                // Silently ignore cleanup errors
             }
         }
 
@@ -2568,78 +2521,27 @@ namespace IniEdit.GUI
             if (_sectionTreeView == null || _documentConfig == null)
                 return;
 
-            _sectionTreeView.BeginUpdate();
-            _sectionTreeView.Nodes.Clear();
-
+            // Ensure TreeViewBuilder is created with current separator
             var separator = Properties.Settings.Default.TreeViewSeparator;
             if (string.IsNullOrEmpty(separator))
                 separator = ".";
 
-            // Add global section
-            var globalNode = new TreeNode(GetGlobalSectionName())
+            if (_treeViewBuilder == null || _treeViewBuilder.Separator != separator)
             {
-                Tag = (Section?)null  // Global section
-            };
-            _sectionTreeView.Nodes.Add(globalNode);
+                _treeViewBuilder = new TreeViewBuilder(separator);
+            }
 
-            // Build tree from section names
-            foreach (var section in _documentConfig)
+            _sectionTreeView.BeginUpdate();
+            _sectionTreeView.Nodes.Clear();
+
+            // Build tree using TreeViewBuilder
+            var treeData = _treeViewBuilder.BuildTree(_documentConfig, GetGlobalSectionName());
+
+            // Convert TreeNodeData to TreeNode
+            foreach (var nodeData in treeData)
             {
-                var parts = section.Name.Split(new[] { separator }, StringSplitOptions.None);
-                var currentNodes = _sectionTreeView.Nodes;
-                TreeNode? parentNode = null;
-
-                // Build partial name incrementally to avoid O(n²) string.Join
-                var partialNameBuilder = new StringBuilder();
-
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    var displayName = parts[i];
-
-                    // Build partial name incrementally
-                    if (i > 0)
-                        partialNameBuilder.Append(separator);
-                    partialNameBuilder.Append(displayName);
-
-                    // Look for existing node at this level
-                    TreeNode? existingNode = null;
-                    foreach (TreeNode node in currentNodes)
-                    {
-                        if (node.Text == displayName)
-                        {
-                            existingNode = node;
-                            break;
-                        }
-                    }
-
-                    if (existingNode != null)
-                    {
-                        parentNode = existingNode;
-                        currentNodes = existingNode.Nodes;
-                    }
-                    else
-                    {
-                        // Create new node
-                        var newNode = new TreeNode(displayName);
-
-                        // If this is the last part, it's the actual section
-                        if (i == parts.Length - 1)
-                        {
-                            newNode.Tag = section;
-                        }
-                        else
-                        {
-                            // Intermediate node - might represent a section or just a path
-                            var partialName = partialNameBuilder.ToString();
-                            var matchingSection = _documentConfig.GetSection(partialName);
-                            newNode.Tag = matchingSection;
-                        }
-
-                        currentNodes.Add(newNode);
-                        parentNode = newNode;
-                        currentNodes = newNode.Nodes;
-                    }
-                }
+                var treeNode = ConvertToTreeNode(nodeData);
+                _sectionTreeView.Nodes.Add(treeNode);
             }
 
             _sectionTreeView.EndUpdate();
@@ -2649,6 +2551,21 @@ namespace IniEdit.GUI
             {
                 node.Expand();
             }
+        }
+
+        private TreeNode ConvertToTreeNode(TreeNodeData nodeData)
+        {
+            var treeNode = new TreeNode(nodeData.DisplayName)
+            {
+                Tag = nodeData.Section
+            };
+
+            foreach (var childData in nodeData.Children)
+            {
+                treeNode.Nodes.Add(ConvertToTreeNode(childData));
+            }
+
+            return treeNode;
         }
 
         private void OnTreeViewSectionSelected(object? sender, TreeViewEventArgs e)
