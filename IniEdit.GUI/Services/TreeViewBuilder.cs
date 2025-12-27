@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using IniEdit;
 
-namespace IniEdit.Services
+namespace IniEdit.GUI.Services
 {
     /// <summary>
     /// Represents a node in a hierarchical tree structure.

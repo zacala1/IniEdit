@@ -2,8 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using IniEdit;
 
-namespace IniEdit.Services
+namespace IniEdit.GUI.Services
 {
     /// <summary>
     /// Manages automatic backup of INI files.

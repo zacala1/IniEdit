@@ -10,7 +10,7 @@ using IniEdit;
 using IniEdit.GUI.Commands;
 using IniEdit.GUI.Forms;
 using IniEdit.GUI.Theme;
-using IniEdit.Services;
+using IniEdit.GUI.Services;
 
 namespace IniEdit.GUI
 {
