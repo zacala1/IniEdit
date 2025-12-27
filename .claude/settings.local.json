@@ -44,7 +44,8 @@
       "Bash(for f in Parsing/*.cs)",
       "Bash(do sed -i 's/namespace IniEdit\\\\.Tests$/namespace IniEdit.Tests.Parsing/' \"$f\")",
       "Bash(for f in Exceptions/*.cs)",
-      "Bash(do sed -i 's/namespace IniEdit\\\\.Tests$/namespace IniEdit.Tests.Exceptions/' \"$f\")"
+      "Bash(do sed -i 's/namespace IniEdit\\\\.Tests$/namespace IniEdit.Tests.Exceptions/' \"$f\")",
+      "Bash(\"을 IniConfigOption.DefaultCommentPrefix로 교체\nEOF\n\\)\")"
     ]
   }
 }

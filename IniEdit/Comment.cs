@@ -5,7 +5,12 @@ namespace IniEdit
     /// </summary>
     public sealed class Comment
     {
-        private string _prefix = ";";
+        /// <summary>
+        /// Default comment prefix string.
+        /// </summary>
+        private static readonly string DefaultPrefix = IniConfigOption.DefaultCommentPrefix.ToString();
+
+        private string _prefix = DefaultPrefix;
 
         /// <summary>
         /// Gets or sets the comment prefix character (e.g., ';' or '#').
@@ -43,7 +48,7 @@ namespace IniEdit
         /// Initializes a new instance of the <see cref="Comment"/> class with a default prefix.
         /// </summary>
         /// <param name="value">The comment text.</param>
-        public Comment(string value) : this(";", value)
+        public Comment(string value) : this(DefaultPrefix, value)
         { }
 
         /// <summary>

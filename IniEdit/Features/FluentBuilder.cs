@@ -83,6 +83,21 @@ namespace IniEdit
         }
 
         /// <summary>
+        /// Adds a property (with full metadata including comments) to the default section.
+        /// </summary>
+        /// <param name="property">The property to add. A clone is created to avoid reference issues.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when property is null.</exception>
+        public DocumentBuilder WithDefaultProperty(Property property)
+        {
+            if (property == null)
+                throw new ArgumentNullException(nameof(property));
+
+            _document.DefaultSection.AddProperty(property.Clone());
+            return this;
+        }
+
+        /// <summary>
         /// Builds and returns the configured document.
         /// </summary>
         /// <returns>The built <see cref="Document"/>.</returns>
@@ -154,6 +169,21 @@ namespace IniEdit
         }
 
         /// <summary>
+        /// Adds a property (with full metadata including comments) to the section.
+        /// </summary>
+        /// <param name="property">The property to add. A clone is created to avoid reference issues.</param>
+        /// <returns>This builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when property is null.</exception>
+        public SectionBuilder WithProperty(Property property)
+        {
+            if (property == null)
+                throw new ArgumentNullException(nameof(property));
+
+            _section.AddProperty(property.Clone());
+            return this;
+        }
+
+        /// <summary>
         /// Adds a quoted property to the section.
         /// </summary>
         /// <param name="key">The property key.</param>
@@ -220,10 +250,10 @@ namespace IniEdit
 
             var builder = new DocumentBuilder();
 
-            // Add default section properties
+            // Add default section properties (with full metadata)
             foreach (var property in document.DefaultSection.GetProperties())
             {
-                builder.WithDefaultProperty(property.Name, property.Value);
+                builder.WithDefaultProperty(property);
             }
 
             // Add sections
@@ -231,9 +261,10 @@ namespace IniEdit
             {
                 builder.WithSection(section.Name, sectionBuilder =>
                 {
+                    // Add properties with full metadata (including comments)
                     foreach (var property in section.GetProperties())
                     {
-                        sectionBuilder.WithProperty(property.Name, property.Value);
+                        sectionBuilder.WithProperty(property);
                     }
 
                     if (section.Comment != null)

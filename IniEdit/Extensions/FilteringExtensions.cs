@@ -24,8 +24,18 @@ namespace IniEdit
         private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
 
         /// <summary>
+        /// Tracks insertion order for FIFO eviction.
+        /// </summary>
+        private static readonly ConcurrentQueue<string> CacheOrder = new();
+
+        /// <summary>
+        /// Lock object for cache eviction synchronization.
+        /// </summary>
+        private static readonly object CacheEvictionLock = new();
+
+        /// <summary>
         /// Gets or creates a cached regex for the specified pattern.
-        /// Uses an LRU-like eviction strategy when cache exceeds maximum size.
+        /// Uses FIFO eviction strategy when cache exceeds maximum size.
         /// </summary>
         private static Regex GetOrCreateRegex(string pattern)
         {
@@ -35,17 +45,24 @@ namespace IniEdit
             // Create new regex
             var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled, RegexTimeout);
 
-            // Evict oldest entries if cache is too large (simple strategy: clear half when full)
-            if (RegexCache.Count >= MaxCacheSize)
+            // Try to add to cache
+            if (RegexCache.TryAdd(pattern, regex))
             {
-                var keysToRemove = RegexCache.Keys.Take(MaxCacheSize / 2).ToList();
-                foreach (var key in keysToRemove)
+                CacheOrder.Enqueue(pattern);
+
+                // Evict oldest entries if cache is too large (FIFO)
+                if (RegexCache.Count > MaxCacheSize)
                 {
-                    RegexCache.TryRemove(key, out _);
+                    lock (CacheEvictionLock)
+                    {
+                        while (RegexCache.Count > MaxCacheSize && CacheOrder.TryDequeue(out var oldestKey))
+                        {
+                            RegexCache.TryRemove(oldestKey, out _);
+                        }
+                    }
                 }
             }
 
-            RegexCache.TryAdd(pattern, regex);
             return regex;
         }
 

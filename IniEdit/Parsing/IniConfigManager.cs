@@ -183,7 +183,7 @@ namespace IniEdit
             {
 
                 Section currentSection = doc.DefaultSection;
-                var pendingComments = new List<Comment>();
+                var pendingComments = new Queue<Comment>();
                 string? line;
                 int lineNumber = 0;
                 while ((line = reader.ReadLine()) != null)
@@ -208,9 +208,9 @@ namespace IniEdit
                         // Enforce MaxPendingComments limit (FIFO - remove oldest when full)
                         if (option.MaxPendingComments > 0 && pendingComments.Count >= option.MaxPendingComments)
                         {
-                            pendingComments.RemoveAt(0);
+                            pendingComments.Dequeue();
                         }
-                        pendingComments.Add(new Comment(commentString));
+                        pendingComments.Enqueue(new Comment(commentString));
                         continue;
                     }
 
@@ -821,7 +821,7 @@ namespace IniEdit
             {
 
                 Section currentSection = doc.DefaultSection;
-                var pendingComments = new List<Comment>();
+                var pendingComments = new Queue<Comment>();
                 string? line;
                 int lineNumber = 0;
                 while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
@@ -846,9 +846,9 @@ namespace IniEdit
                         // Enforce MaxPendingComments limit (FIFO - remove oldest when full)
                         if (option.MaxPendingComments > 0 && pendingComments.Count >= option.MaxPendingComments)
                         {
-                            pendingComments.RemoveAt(0);
+                            pendingComments.Dequeue();
                         }
-                        pendingComments.Add(new Comment(commentString));
+                        pendingComments.Enqueue(new Comment(commentString));
                         continue;
                     }
 
