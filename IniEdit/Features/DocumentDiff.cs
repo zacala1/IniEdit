@@ -319,7 +319,7 @@ namespace IniEdit
             // Apply modified sections
             foreach (var sectionDiff in diff.ModifiedSections)
             {
-                var section = string.IsNullOrEmpty(sectionDiff.SectionName)
+                var section = sectionDiff.SectionName == Document.DefaultSectionName
                     ? target.DefaultSection
                     : target.GetSection(sectionDiff.SectionName);
 

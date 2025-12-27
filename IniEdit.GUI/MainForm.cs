@@ -302,6 +302,12 @@ namespace IniEdit.GUI
             propertyView.BeginUpdate();
             propertyView.Items.Clear();
 
+            if (section == null)
+            {
+                propertyView.EndUpdate();
+                return;
+            }
+
             foreach (var property in section)
             {
                 if (property.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
@@ -2233,6 +2239,13 @@ namespace IniEdit.GUI
                 _autoBackupTimer.Tick -= OnAutoBackupTick;
                 _autoBackupTimer.Dispose();
                 _autoBackupTimer = null;
+            }
+
+            // Dispose duplicate key font
+            if (_duplicateKeyFont != null)
+            {
+                _duplicateKeyFont.Dispose();
+                _duplicateKeyFont = null;
             }
 
             // Cleanup TreeView if in tree mode
