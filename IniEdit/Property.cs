@@ -11,6 +11,11 @@ namespace IniEdit
     /// </remarks>
     public sealed class Property : ElementBase
     {
+        /// <summary>
+        /// The default maximum number of elements allowed when parsing an array value.
+        /// </summary>
+        public const int DefaultMaxArrayElements = 10000;
+
         private string _value;
 
         /// <summary>
@@ -231,10 +236,10 @@ namespace IniEdit
         /// Gets the value of this property as an array of the specified type. Expected format: {value1, value2, ...}
         /// </summary>
         /// <typeparam name="T">The type of array elements.</typeparam>
-        /// <param name="maxElements">Maximum number of elements allowed. Default is 10000. Set to 0 for unlimited.</param>
+        /// <param name="maxElements">Maximum number of elements allowed. Default is <see cref="DefaultMaxArrayElements"/>. Set to 0 for unlimited.</param>
         /// <returns>An array of values.</returns>
         /// <exception cref="FormatException">Thrown when the value is not in the correct array format, exceeds maxElements, or element conversion fails.</exception>
-        public T[] GetValueArray<T>(int maxElements = 10000)
+        public T[] GetValueArray<T>(int maxElements = DefaultMaxArrayElements)
         {
             ReadOnlySpan<char> span = _value.AsSpan().Trim();
             if (span.Length < 2 || span[0] != '{' || span[^1] != '}')

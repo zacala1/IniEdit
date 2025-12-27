@@ -1744,7 +1744,7 @@ namespace IniEdit.GUI
             SetDirty(false);
         }
 
-        private async void OpenFile(object? sender, EventArgs e)
+        private void OpenFile(object? sender, EventArgs e)
         {
             if (!PromptSaveChanges())
                 return;
@@ -1754,12 +1754,12 @@ namespace IniEdit.GUI
                 ofd.Filter = "INI files (*.ini)|*.ini|All files (*.*)|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    await LoadIniFileAsync(ofd.FileName);
+                    LoadIniFile(ofd.FileName);
                 }
             }
         }
 
-        private async Task LoadIniFileAsync(string filename)
+        private void LoadIniFile(string filename)
         {
             _currentFilePath = filename;
             sectionView.Items.Clear();
@@ -1769,8 +1769,8 @@ namespace IniEdit.GUI
                 // Detect file encoding
                 _currentEncoding = EncodingHelper.DetectEncoding(filename);
 
-                // Use async I/O with current options and detected encoding
-                _documentConfig = await IniConfigManager.LoadAsync(filename, _currentEncoding, _configOptions);
+                // Load with current options and detected encoding
+                _documentConfig = IniConfigManager.Load(filename, _currentEncoding, _configOptions);
 
                 RefreshSectionList();
 
@@ -1809,9 +1809,9 @@ namespace IniEdit.GUI
         }
 
         // Helper method for opening recent files
-        private async void LoadFile(string filePath)
+        private void LoadFile(string filePath)
         {
-            await LoadIniFileAsync(filePath);
+            LoadIniFile(filePath);
             UpdateTitle();
         }
 
@@ -1844,7 +1844,7 @@ namespace IniEdit.GUI
             LoadFile(_currentFilePath);
         }
 
-        private async void SaveFile(object? sender, EventArgs e)
+        private void SaveFile(object? sender, EventArgs e)
         {
             if (_documentConfig == null)
             {
@@ -1860,7 +1860,7 @@ namespace IniEdit.GUI
 
             try
             {
-                await IniConfigManager.SaveAsync(_currentFilePath, _documentConfig);
+                IniConfigManager.Save(_currentFilePath, _documentConfig);
                 _commandManager.MarkSavePoint();
                 SetDirty(false);
                 MessageBox.Show("File saved successfully!", "Save",
@@ -1873,7 +1873,7 @@ namespace IniEdit.GUI
             }
         }
 
-        private async void SaveAsFile(object? sender, EventArgs e)
+        private void SaveAsFile(object? sender, EventArgs e)
         {
             if (_documentConfig == null)
             {
@@ -1897,7 +1897,7 @@ namespace IniEdit.GUI
             try
             {
                 _currentFilePath = saveFileDialog.FileName;
-                await IniConfigManager.SaveAsync(_currentFilePath, _documentConfig);
+                IniConfigManager.Save(_currentFilePath, _documentConfig);
                 _commandManager.MarkSavePoint();
                 SetDirty(false);
                 RefreshStatusBar();
@@ -2106,8 +2106,8 @@ namespace IniEdit.GUI
 
         private void ShowAboutDialog(object? sender, EventArgs e)
         {
-            AboutBox box = new AboutBox();
-            box.Show();
+            using var box = new AboutBox();
+            box.ShowDialog(this);
         }
 
         #region Get Section
@@ -2221,7 +2221,9 @@ namespace IniEdit.GUI
                 _findReplaceDialog = null;
             }
 
-            // Dispose inline cell editor
+            // Unsubscribe and dispose inline cell editor
+            _inlineCellEditBox.KeyPress -= OnInlineCellEditorKeyPress;
+            _inlineCellEditBox.LostFocus -= OnInlineCellEditorLostFocus;
             _inlineCellEditBox.Dispose();
 
             // Dispose auto-backup timer
@@ -3860,7 +3862,7 @@ namespace IniEdit.GUI
             }
         }
 
-        private async void ShowCompareDialog(object? sender, EventArgs e)
+        private void ShowCompareDialog(object? sender, EventArgs e)
         {
             if (_documentConfig == null)
             {
@@ -3882,7 +3884,7 @@ namespace IniEdit.GUI
             try
             {
                 var otherEncoding = EncodingHelper.DetectEncoding(openDialog.FileName);
-                var otherDoc = await IniConfigManager.LoadAsync(openDialog.FileName, otherEncoding, _configOptions);
+                var otherDoc = IniConfigManager.Load(openDialog.FileName, otherEncoding, _configOptions);
                 var leftTitle = string.IsNullOrEmpty(_currentFilePath) ? "Current Document" : Path.GetFileName(_currentFilePath);
                 var rightTitle = Path.GetFileName(openDialog.FileName);
 

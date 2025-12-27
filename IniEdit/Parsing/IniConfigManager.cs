@@ -564,9 +564,12 @@ namespace IniEdit
         {
             foreach (var section in sections)
             {
-                HashSet<string> seen = new HashSet<string>();
+                if (section == null)
+                    continue;
+
+                HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var properties = section.GetInternalProperties();
-                properties.RemoveAll(section => !seen.Add(section.Name));
+                properties.RemoveAll(p => !seen.Add(p.Name));
             }
         }
 
@@ -605,6 +608,7 @@ namespace IniEdit
         /// </summary>
         /// <param name="filePath">The path where the file will be saved.</param>
         /// <param name="document">The document to save.</param>
+        /// <param name="options">Optional save options controlling formatting. If null, uses default options.</param>
         /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="document"/> is null.</exception>
         /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
@@ -613,9 +617,9 @@ namespace IniEdit
         /// <remarks>
         /// This method uses atomic write (write to temp file, then replace) to prevent data loss.
         /// </remarks>
-        public static void Save(string filePath, Document document)
+        public static void Save(string filePath, Document document, SaveOptions? options = null)
         {
-            Save(filePath, Encoding.UTF8, document);
+            Save(filePath, Encoding.UTF8, document, options);
         }
 
         /// <summary>
@@ -624,6 +628,7 @@ namespace IniEdit
         /// <param name="filePath">The path where the file will be saved.</param>
         /// <param name="encoding">The text encoding to use.</param>
         /// <param name="document">The document to save.</param>
+        /// <param name="options">Optional save options controlling formatting. If null, uses default options.</param>
         /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="encoding"/> or <paramref name="document"/> is null.</exception>
         /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
@@ -632,7 +637,7 @@ namespace IniEdit
         /// <remarks>
         /// This method uses atomic write (write to temp file, then replace) to prevent data loss.
         /// </remarks>
-        public static void Save(string filePath, Encoding encoding, Document document)
+        public static void Save(string filePath, Encoding encoding, Document document, SaveOptions? options = null)
         {
             if (string.IsNullOrEmpty(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
@@ -648,13 +653,13 @@ namespace IniEdit
                 // Write to temporary file
                 using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    Save(fileStream, encoding, document);
+                    Save(fileStream, encoding, document, options ?? SaveOptions.Default);
                 }
 
                 // Replace original file with temp file (atomic on most file systems)
                 File.Move(tempFilePath, filePath, overwrite: true);
             }
-            catch
+            catch (Exception)
             {
                 // Clean up temp file if something went wrong
                 try
@@ -662,9 +667,9 @@ namespace IniEdit
                     if (File.Exists(tempFilePath))
                         File.Delete(tempFilePath);
                 }
-                catch
+                catch (IOException)
                 {
-                    // Ignore cleanup errors
+                    // Ignore cleanup errors - temp file will be cleaned up by OS eventually
                 }
                 throw;
             }
@@ -681,12 +686,29 @@ namespace IniEdit
         /// <exception cref="IOException">Thrown when an I/O error occurs while writing to the stream.</exception>
         public static void Save(Stream stream, Encoding encoding, Document document)
         {
+            Save(stream, encoding, document, SaveOptions.Default);
+        }
+
+        /// <summary>
+        /// Saves an INI configuration document to a stream using the specified encoding and save options.
+        /// </summary>
+        /// <param name="stream">The stream to write to.</param>
+        /// <param name="encoding">The text encoding to use.</param>
+        /// <param name="document">The document to save.</param>
+        /// <param name="options">The save options controlling formatting.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/>, <paramref name="encoding"/>, <paramref name="document"/>, or <paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the stream is not writable.</exception>
+        /// <exception cref="IOException">Thrown when an I/O error occurs while writing to the stream.</exception>
+        public static void Save(Stream stream, Encoding encoding, Document document, SaveOptions options)
+        {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
             if (encoding == null)
                 throw new ArgumentNullException(nameof(encoding));
             if (document == null)
                 throw new ArgumentNullException(nameof(document));
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
             if (!stream.CanWrite)
                 throw new ArgumentException("Stream must be writable", nameof(stream));
 
@@ -697,14 +719,14 @@ namespace IniEdit
             {
                 foreach (var comment in property.PreComments)
                 {
-                    writer.Write(document.DefaultCommentPrefixChar);
+                    WriteCommentPrefix(writer, comment, document, options);
                     writer.WriteLine(comment.Value);
                 }
 
                 var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
                 writer.Write(property.Name);
-                writer.Write(" = ");
+                writer.Write(options.KeyValueSeparator);
                 if (shouldQuote)
                 {
                     writer.Write('"');
@@ -717,14 +739,14 @@ namespace IniEdit
                 }
                 if (!string.IsNullOrEmpty(property.Comment?.Value))
                 {
-                    writer.Write(' ');
-                    writer.Write(document.DefaultCommentPrefixChar);
+                    WriteInlineCommentPrefix(writer, property.Comment, document, options);
                     writer.Write(property.Comment.Value);
                 }
                 writer.WriteLine();
             }
             if (document.DefaultSection.PropertyCount > 0 &&
-                document.SectionCount > 0)
+                document.SectionCount > 0 &&
+                options.BlankLineAfterDefaultSection)
             {
                 writer.WriteLine();
             }
@@ -736,7 +758,7 @@ namespace IniEdit
                 // Write section comments
                 foreach (var comment in section.PreComments)
                 {
-                    writer.Write(document.DefaultCommentPrefixChar);
+                    WriteCommentPrefix(writer, comment, document, options);
                     writer.WriteLine(comment.Value);
                 }
 
@@ -746,8 +768,7 @@ namespace IniEdit
                 writer.Write(']');
                 if (!string.IsNullOrEmpty(section.Comment?.Value))
                 {
-                    writer.Write(' ');
-                    writer.Write(document.DefaultCommentPrefixChar);
+                    WriteInlineCommentPrefix(writer, section.Comment, document, options);
                     writer.Write(section.Comment.Value);
                 }
 
@@ -757,14 +778,14 @@ namespace IniEdit
                     writer.WriteLine();
                     foreach (var comment in property.PreComments)
                     {
-                        writer.Write(document.DefaultCommentPrefixChar);
+                        WriteCommentPrefix(writer, comment, document, options);
                         writer.WriteLine(comment.Value);
                     }
 
                     var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
 
                     writer.Write(property.Name);
-                    writer.Write(" = ");
+                    writer.Write(options.KeyValueSeparator);
                     if (shouldQuote)
                     {
                         writer.Write('"');
@@ -777,8 +798,7 @@ namespace IniEdit
                     }
                     if (!string.IsNullOrEmpty(property.Comment?.Value))
                     {
-                        writer.Write(' ');
-                        writer.Write(document.DefaultCommentPrefixChar);
+                        WriteInlineCommentPrefix(writer, property.Comment, document, options);
                         writer.Write(property.Comment.Value);
                     }
                 }
@@ -786,457 +806,34 @@ namespace IniEdit
                 if (indexSection < document.SectionCount - 1)
                 {
                     writer.WriteLine();
-                    writer.WriteLine();
+                    for (int i = 0; i < options.BlankLinesBetweenSections; i++)
+                    {
+                        writer.WriteLine();
+                    }
                 }
             }
+
+            writer.Flush();
         }
 
         /// <summary>
-        /// Asynchronously loads an INI configuration from a stream using true async I/O.
+        /// Writes the comment prefix based on save options.
         /// </summary>
-        /// <param name="stream">The stream to read from.</param>
-        /// <param name="encoding">The text encoding to use.</param>
-        /// <param name="option">Optional configuration options.</param>
-        /// <param name="cancellationToken">Token to cancel the operation.</param>
-        /// <returns>A task that represents the asynchronous operation, containing the loaded document.</returns>
-        /// <remarks>
-        /// This method uses true asynchronous I/O with ReadLineAsync, avoiding thread pool exhaustion.
-        /// Suitable for high-concurrency scenarios.
-        /// </remarks>
-        public static async Task<Document> LoadAsync(Stream stream, Encoding encoding, IniConfigOption? option = null, CancellationToken cancellationToken = default)
+        private static void WriteCommentPrefix(TextWriter writer, Comment comment, Document document, SaveOptions options)
         {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-            if (encoding == null)
-                throw new ArgumentNullException(nameof(encoding));
-            if (!stream.CanRead)
-                throw new ArgumentException("Stream must be readable", nameof(stream));
-            if (option == null)
-                option = new IniConfigOption();
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var doc = new Document(option);
-            using var reader = new StreamReader(stream, encoding, true, BufferSize, leaveOpen: true);
-            {
-
-                Section currentSection = doc.DefaultSection;
-                var pendingComments = new Queue<Comment>();
-                string? line;
-                int lineNumber = 0;
-                while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
-                {
-                    lineNumber++;
-
-                    // Check line length limit
-                    if (option.MaxLineLength > 0 && line.Length > option.MaxLineLength)
-                    {
-                        ReportError(doc, option, lineNumber, TruncateLine(line), $"Line exceeds maximum length ({option.MaxLineLength} characters)");
-                        continue;
-                    }
-
-                    var span = line.AsSpan().Trim();
-                    if (span.IsEmpty)
-                        continue;
-
-                    var commentSign = span.IndexOfAny(doc.CommentPrefixChars);
-                    if (commentSign == 0)
-                    {
-                        var commentString = span.Slice(1).ToString();
-                        // Enforce MaxPendingComments limit (FIFO - remove oldest when full)
-                        if (option.MaxPendingComments > 0 && pendingComments.Count >= option.MaxPendingComments)
-                        {
-                            pendingComments.Dequeue();
-                        }
-                        pendingComments.Enqueue(new Comment(commentString));
-                        continue;
-                    }
-
-                    if (span[0] == '[')
-                    {
-                        var closeBracket = span.IndexOf(']');
-                        if (closeBracket == -1)
-                        {
-                            ReportError(doc, option, lineNumber, line, "Missing closing bracket in section declaration");
-                            continue;
-                        }
-
-                        var sectionNameSpan = span.Slice(1, closeBracket - 1).Trim();
-
-                        if (sectionNameSpan.IsEmpty || sectionNameSpan.IsWhiteSpace())
-                        {
-                            ReportError(doc, option, lineNumber, line, "Section name cannot be empty");
-                            continue;
-                        }
-
-                        var sectionName = sectionNameSpan.ToString();
-                        try
-                        {
-                            currentSection = new Section(sectionName);
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            var error = new ParsingErrorEventArgs(lineNumber, line, $"Invalid section name: {ex.Message}");
-                            if (option.CollectParsingErrors)
-                                doc.AddParsingError(error);
-                            continue;
-                        }
-
-                        var commentRemains = span.Slice(closeBracket + 1).TrimStart();
-                        commentSign = commentRemains.IndexOfAny(doc.CommentPrefixChars);
-                        if (commentSign == 0)
-                        {
-                            var commentString = commentRemains.Slice(1).ToString();
-                            currentSection.Comment = new Comment(commentString);
-                        }
-
-                        if (pendingComments.Count > 0)
-                        {
-                            currentSection.PreComments.AddRange(pendingComments);
-                            pendingComments.Clear();
-                        }
-
-                        // Check section limit
-                        if (option.MaxSections > 0 && doc.SectionCount >= option.MaxSections)
-                        {
-                            ReportError(doc, option, lineNumber, line, $"Maximum section limit ({option.MaxSections}) exceeded");
-                            continue;
-                        }
-
-                        doc.AddSectionInternal(currentSection);
-                        continue;
-                    }
-
-                    // Parse property
-                    var equalSign = span.IndexOf('=');
-                    if (equalSign == -1)
-                    {
-                        ReportError(doc, option, lineNumber, line, "Missing equals sign in key-value pair");
-                        continue;
-                    }
-
-                    var keyNameSpan = span.Slice(0, equalSign).Trim();
-                    if (keyNameSpan.IsEmpty)
-                    {
-                        ReportError(doc, option, lineNumber, line, "Property key cannot be empty");
-                        continue;
-                    }
-
-                    var keyName = keyNameSpan.ToString(); // Allocate only for key name
-                    var valueStartSpan = span.Slice(equalSign + 1).TrimStart();
-                    string value;
-                    string comment = string.Empty;
-                    bool isQuoted = false;
-
-                    if (valueStartSpan.Length > 0 && valueStartSpan[0] == '"')
-                    {
-                        isQuoted = true;
-                        var sb = new StringBuilder(valueStartSpan.Length);
-                        var remains = valueStartSpan.Slice(1);
-                        bool isEscaped = false;
-                        bool isTerminated = false;
-                        int remainsIndex = 0;
-
-                        while (remainsIndex < remains.Length)
-                        {
-                            if (isEscaped)
-                            {
-                                var escapeResult = remains[remainsIndex] switch
-                                {
-                                    '0' => '\0',
-                                    'a' => '\a',
-                                    'b' => '\b',
-                                    't' => '\t',
-                                    'r' => '\r',
-                                    'n' => '\n',
-                                    ';' => ';',
-                                    '#' => '#',
-                                    '"' => '"',
-                                    '\\' => '\\',
-                                    _ => remains[remainsIndex]  // Use original character for unknown escape sequences
-                                };
-                                sb.Append(escapeResult);
-                                isEscaped = false;
-                            }
-                            else
-                            {
-                                if (remains[remainsIndex] == '\\')
-                                {
-                                    isEscaped = true;
-                                }
-                                else if (remains[remainsIndex] == '"')
-                                {
-                                    isTerminated = true;
-                                    remainsIndex++;
-                                    break;
-                                }
-                                else
-                                {
-                                    sb.Append(remains[remainsIndex]);
-                                }
-                            }
-                            remainsIndex++;
-                        }
-                        if (isEscaped)
-                        {
-                            ReportError(doc, option, lineNumber, line, "Invalid escape sequence: incomplete escape marker");
-                            continue;
-                        }
-                        if (!isTerminated)
-                        {
-                            ReportError(doc, option, lineNumber, line, "Unterminated quote: missing closing quotation mark");
-                            continue;
-                        }
-
-                        value = sb.ToString();
-
-                        // Check for inline comment
-                        var afterQuoteSpan = remains.Slice(remainsIndex).TrimStart();
-                        commentSign = afterQuoteSpan.IndexOfAny(doc.CommentPrefixChars);
-                        if (commentSign == 0)
-                        {
-                            comment = afterQuoteSpan.Slice(1).ToString();
-                        }
-                        else if (commentSign > 0)
-                        {
-                            ReportError(doc, option, lineNumber, line, "Invalid content after closing quote");
-                            continue;
-                        }
-                        else
-                        {
-                            afterQuoteSpan = afterQuoteSpan.Trim();
-                            if (afterQuoteSpan.Length != 0)
-                            {
-                                ReportError(doc, option, lineNumber, line, "Invalid quote format");
-                                continue;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Check for inline comment
-                        commentSign = valueStartSpan.IndexOfAny(doc.CommentPrefixChars);
-                        if (commentSign >= 0)
-                        {
-                            value = valueStartSpan.Slice(0, commentSign).TrimEnd().ToString();
-                            comment = valueStartSpan.Slice(commentSign + 1).ToString();
-                        }
-                        else
-                        {
-                            value = valueStartSpan.TrimEnd().ToString();
-                            comment = string.Empty;
-                        }
-                    }
-
-                    // Check value length limit
-                    if (option.MaxValueLength > 0 && value.Length > option.MaxValueLength)
-                    {
-                        ReportError(doc, option, lineNumber, line, $"Value length ({value.Length}) exceeds maximum ({option.MaxValueLength})");
-                        continue;
-                    }
-
-                    // Check property count limit
-                    if (option.MaxPropertiesPerSection > 0 && currentSection.PropertyCount >= option.MaxPropertiesPerSection)
-                    {
-                        ReportError(doc, option, lineNumber, line, $"Maximum properties per section ({option.MaxPropertiesPerSection}) exceeded");
-                        continue;
-                    }
-
-                    var property = new Property(keyName, value);
-                    property.IsQuoted = isQuoted;
-
-                    if (pendingComments.Count > 0)
-                    {
-                        property.PreComments.AddRange(pendingComments);
-                        pendingComments.Clear();
-                    }
-
-                    if (!string.IsNullOrEmpty(comment))
-                    {
-                        property.Comment = new Comment(comment);
-                    }
-
-                    currentSection.AddProperty(property);
-                }
-            }
-
-            // Remove null values (defensive check)
-            doc.GetInternalSections().RemoveAll(x => x == null);
-            foreach (Section section in doc)
-            {
-                section.GetInternalProperties().RemoveAll(x => x == null);
-            }
-
-            // Apply policies - RebuildSectionLookup is called once at the end
-            bool needsRebuild = false;
-            if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.ThrowError)
-            {
-                ThrowDuplicateSectionExist(doc.GetInternalSections());
-            }
-            else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.FirstWin)
-            {
-                DeduplicateSectionOnFirstWin(doc.GetInternalSections());
-                needsRebuild = true;
-            }
-            else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.LastWin)
-            {
-                DeduplicateSectionOnLastWin(doc.GetInternalSections());
-                needsRebuild = true;
-            }
-            else if (option.DuplicateSectionPolicy == DuplicateSectionPolicyType.Merge)
-            {
-                DeduplicateSectionOnMerging(doc.GetInternalSections(), option.DuplicateKeyPolicy);
-                needsRebuild = true;
-            }
-
-            if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.ThrowError)
-            {
-                ThrowDuplicatePropertyExist(doc);
-            }
-            else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.FirstWin)
-            {
-                DeduplicatePropertyOnFirstWin(doc);
-            }
-            else if (option.DuplicateKeyPolicy == DuplicateKeyPolicyType.LastWin)
-            {
-                DeduplicatePropertyOnLastWin(doc);
-            }
-
-            // Single rebuild at the end for all section modifications
-            if (needsRebuild)
-            {
-                doc.RebuildSectionLookup();
-            }
-
-            return doc;
+            writer.Write(options.NormalizeCommentPrefix ? document.DefaultCommentPrefixChar : comment.Prefix);
         }
 
         /// <summary>
-        /// Asynchronously saves an INI configuration to a stream using true async I/O.
+        /// Writes the inline comment prefix (with optional space) based on save options.
         /// </summary>
-        /// <param name="stream">The stream to write to.</param>
-        /// <param name="encoding">The text encoding to use.</param>
-        /// <param name="document">The document to save.</param>
-        /// <param name="cancellationToken">Token to cancel the operation.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        /// <remarks>
-        /// This method uses true asynchronous I/O with WriteAsync/WriteLineAsync, avoiding thread pool exhaustion.
-        /// Suitable for high-concurrency scenarios.
-        /// </remarks>
-        public static async Task SaveAsync(Stream stream, Encoding encoding, Document document, CancellationToken cancellationToken = default)
+        private static void WriteInlineCommentPrefix(TextWriter writer, Comment comment, Document document, SaveOptions options)
         {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-            if (encoding == null)
-                throw new ArgumentNullException(nameof(encoding));
-            if (document == null)
-                throw new ArgumentNullException(nameof(document));
-            if (!stream.CanWrite)
-                throw new ArgumentException("Stream must be writable", nameof(stream));
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            using var writer = new StreamWriter(stream, encoding, BufferSize, leaveOpen: true);
-
-            // Write default section
-            foreach (var property in document.DefaultSection.GetProperties())
+            if (options.SpaceBeforeInlineComment)
             {
-                foreach (var comment in property.PreComments)
-                {
-                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
-                    await writer.WriteLineAsync(comment.Value).ConfigureAwait(false);
-                }
-
-                var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
-
-                await writer.WriteAsync(property.Name).ConfigureAwait(false);
-                await writer.WriteAsync(" = ").ConfigureAwait(false);
-                if (shouldQuote)
-                {
-                    await writer.WriteAsync('"').ConfigureAwait(false);
-                    WriteEscapedValue(writer, property.Value);
-                    await writer.WriteAsync('"').ConfigureAwait(false);
-                }
-                else
-                {
-                    await writer.WriteAsync(property.Value).ConfigureAwait(false);
-                }
-                if (!string.IsNullOrEmpty(property.Comment?.Value))
-                {
-                    await writer.WriteAsync(' ').ConfigureAwait(false);
-                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
-                    await writer.WriteAsync(property.Comment.Value).ConfigureAwait(false);
-                }
-                await writer.WriteLineAsync().ConfigureAwait(false);
+                writer.Write(' ');
             }
-            if (document.DefaultSection.PropertyCount > 0 &&
-                document.SectionCount > 0)
-            {
-                await writer.WriteLineAsync().ConfigureAwait(false);
-            }
-
-            // Write sections
-            for (var indexSection = 0; indexSection < document.SectionCount; indexSection++)
-            {
-                var section = document[indexSection];
-                // Write section comments
-                foreach (var comment in section.PreComments)
-                {
-                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
-                    await writer.WriteLineAsync(comment.Value).ConfigureAwait(false);
-                }
-
-                // Write section with inline comment
-                await writer.WriteAsync('[').ConfigureAwait(false);
-                await writer.WriteAsync(section.Name).ConfigureAwait(false);
-                await writer.WriteAsync(']').ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(section.Comment?.Value))
-                {
-                    await writer.WriteAsync(' ').ConfigureAwait(false);
-                    await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
-                    await writer.WriteAsync(section.Comment.Value).ConfigureAwait(false);
-                }
-
-                // Write properties
-                foreach (var property in section.GetProperties())
-                {
-                    await writer.WriteLineAsync().ConfigureAwait(false);
-                    foreach (var comment in property.PreComments)
-                    {
-                        await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
-                        await writer.WriteLineAsync(comment.Value).ConfigureAwait(false);
-                    }
-
-                    var shouldQuote = property.IsQuoted || NeedsQuoting(property.Value);
-
-                    await writer.WriteAsync(property.Name).ConfigureAwait(false);
-                    await writer.WriteAsync(" = ").ConfigureAwait(false);
-                    if (shouldQuote)
-                    {
-                        await writer.WriteAsync('"').ConfigureAwait(false);
-                        WriteEscapedValue(writer, property.Value);
-                        await writer.WriteAsync('"').ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        await writer.WriteAsync(property.Value).ConfigureAwait(false);
-                    }
-                    if (!string.IsNullOrEmpty(property.Comment?.Value))
-                    {
-                        await writer.WriteAsync(' ').ConfigureAwait(false);
-                        await writer.WriteAsync(document.DefaultCommentPrefixChar).ConfigureAwait(false);
-                        await writer.WriteAsync(property.Comment.Value).ConfigureAwait(false);
-                    }
-                }
-
-                if (indexSection < document.SectionCount - 1)
-                {
-                    await writer.WriteLineAsync().ConfigureAwait(false);
-                    await writer.WriteLineAsync().ConfigureAwait(false);
-                }
-            }
-
-            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+            writer.Write(options.NormalizeCommentPrefix ? document.DefaultCommentPrefixChar : comment.Prefix);
         }
     }
 }

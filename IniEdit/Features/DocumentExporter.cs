@@ -365,6 +365,8 @@ namespace IniEdit
             options ??= new CsvExportOptions();
 
             var sb = new StringBuilder();
+            // Cache delimiter string to avoid repeated char.ToString() calls
+            var delimiterStr = options.Delimiter.ToString();
 
             // Write header
             if (options.IncludeHeader)
@@ -374,13 +376,13 @@ namespace IniEdit
                 {
                     headers.Add("Comment");
                 }
-                sb.AppendLine(string.Join(options.Delimiter.ToString(), headers));
+                sb.AppendLine(string.Join(delimiterStr, headers));
             }
 
             // Write default section properties
             foreach (var property in document.DefaultSection.GetProperties())
             {
-                WritePropertyAsCsv(sb, "", property, options);
+                WritePropertyAsCsv(sb, "", property, options, delimiterStr);
             }
 
             // Write named section properties
@@ -388,7 +390,7 @@ namespace IniEdit
             {
                 foreach (var property in section.GetProperties())
                 {
-                    WritePropertyAsCsv(sb, section.Name, property, options);
+                    WritePropertyAsCsv(sb, section.Name, property, options, delimiterStr);
                 }
             }
 
@@ -412,7 +414,7 @@ namespace IniEdit
             File.WriteAllText(filePath, csv, options?.Encoding ?? Encoding.UTF8);
         }
 
-        private static void WritePropertyAsCsv(StringBuilder sb, string sectionName, Property property, CsvExportOptions options)
+        private static void WritePropertyAsCsv(StringBuilder sb, string sectionName, Property property, CsvExportOptions options, string delimiterStr)
         {
             var fields = new List<string>
             {
@@ -427,19 +429,21 @@ namespace IniEdit
                 fields.Add(EscapeCsvField(commentText, options));
             }
 
-            sb.AppendLine(string.Join(options.Delimiter.ToString(), fields));
+            sb.AppendLine(string.Join(delimiterStr, fields));
         }
+
+        // Characters that require quoting in CSV (excluding delimiter which varies)
+        private static readonly char[] CsvSpecialChars = { '"', '\r', '\n' };
 
         private static string EscapeCsvField(string value, CsvExportOptions options)
         {
             if (string.IsNullOrEmpty(value))
                 return options.AlwaysQuote ? "\"\"" : "";
 
+            // Use IndexOfAny for faster check of multiple special characters
             bool needsQuoting = options.AlwaysQuote ||
-                                value.Contains(options.Delimiter) ||
-                                value.Contains('"') ||
-                                value.Contains('\r') ||
-                                value.Contains('\n');
+                                value.IndexOf(options.Delimiter) >= 0 ||
+                                value.IndexOfAny(CsvSpecialChars) >= 0;
 
             if (!needsQuoting)
                 return value;

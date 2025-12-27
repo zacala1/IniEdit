@@ -67,40 +67,5 @@ namespace IniEdit
 
             return document;
         }
-
-        /// <summary>
-        /// Asynchronously loads an INI document from a file with specified options.
-        /// </summary>
-        /// <param name="filePath">The path to the INI file.</param>
-        /// <param name="options">The load options.</param>
-        /// <param name="cancellationToken">A token to cancel the operation.</param>
-        /// <returns>A task that represents the asynchronous load operation.</returns>
-        /// <exception cref="ArgumentException">Thrown when filePath is null or empty.</exception>
-        /// <exception cref="ArgumentNullException">Thrown when options is null.</exception>
-        public static async Task<Document> LoadWithOptionsAsync(string filePath, LoadOptions options, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(filePath))
-                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
-            if (options == null)
-                throw new ArgumentNullException(nameof(options));
-
-            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, options.FileShare, BufferSize, useAsync: true);
-            var document = await LoadAsync(fileStream, Encoding.UTF8, options.ConfigOption, cancellationToken).ConfigureAwait(false);
-
-            // Apply section filter if provided
-            if (options.SectionFilter != null)
-            {
-                var sectionsToRemove = document.GetInternalSections()
-                    .Where(s => !options.SectionFilter(s.Name))
-                    .ToList();
-
-                foreach (var section in sectionsToRemove)
-                {
-                    document.RemoveSection(section.Name);
-                }
-            }
-
-            return document;
-        }
     }
 }

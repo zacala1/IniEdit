@@ -572,92 +572,16 @@ key3=""value with ; not a comment"" ; actual comment
 
         #endregion
 
-        #region Async I/O Tests (True Async)
+        #region Stream I/O Tests
 
         [Test]
-        public async Task LoadAsync_ValidFile_LoadsSuccessfully()
-        {
-            // Arrange
-            File.WriteAllText(_tempFilePath, ValidIniContent, Encoding.UTF8);
-
-            // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(doc.DefaultSection.PropertyCount, Is.EqualTo(2));
-                Assert.That(doc.SectionCount, Is.EqualTo(2));
-                Assert.That(doc.DefaultSection["key1"].Value, Is.EqualTo("value1"));
-                Assert.That(doc["Section1"]["key3"].Value, Is.EqualTo("value3"));
-            });
-        }
-
-        [Test]
-        public async Task LoadAsync_WithEncoding_LoadsSuccessfully()
-        {
-            // Arrange
-            File.WriteAllText(_tempFilePath, ValidIniContent, Encoding.UTF8);
-
-            // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, Encoding.UTF8);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(doc.DefaultSection.PropertyCount, Is.EqualTo(2));
-                Assert.That(doc.SectionCount, Is.EqualTo(2));
-            });
-        }
-
-        [Test]
-        public async Task LoadAsync_WithOptions_LoadsSuccessfully()
-        {
-            // Arrange
-            var content = @"
-[Section1]
-key1=value1
-[Section1]
-key2=value2";
-            File.WriteAllText(_tempFilePath, content);
-            var options = new IniConfigOption
-            {
-                DuplicateSectionPolicy = IniConfigOption.DuplicateSectionPolicyType.LastWin
-            };
-
-            // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
-
-            // Assert
-            var section = doc["Section1"];
-            Assert.Multiple(() =>
-            {
-                Assert.That(section.PropertyCount, Is.EqualTo(1));
-                Assert.That(section["key2"].Value, Is.EqualTo("value2"));
-            });
-        }
-
-        [Test]
-        public void LoadAsync_WithCancellationToken_CanBeCancelled()
-        {
-            // Arrange
-            File.WriteAllText(_tempFilePath, ValidIniContent);
-            using var cts = new CancellationTokenSource();
-            cts.Cancel();
-
-            // Act & Assert
-            NUnit.Framework.Assert.ThrowsAsync<OperationCanceledException>(async () =>
-                await IniConfigManager.LoadAsync(_tempFilePath, null, cts.Token));
-        }
-
-        [Test]
-        public async Task LoadAsync_FromStream_LoadsSuccessfully()
+        public void Load_FromStream_LoadsSuccessfully()
         {
             // Arrange
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(ValidIniContent));
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(stream, Encoding.UTF8);
+            var doc = IniConfigManager.Load(stream, Encoding.UTF8);
 
             // Assert
             Assert.Multiple(() =>
@@ -668,60 +592,7 @@ key2=value2";
         }
 
         [Test]
-        public async Task SaveAsync_ValidDocument_SavesSuccessfully()
-        {
-            // Arrange
-            var doc = new Document();
-            doc.DefaultSection.AddProperty("key1", "value1");
-            var section = new Section("Section1");
-            section.AddProperty("key2", "value2");
-            doc.AddSection(section);
-
-            // Act
-            await IniConfigManager.SaveAsync(_tempFilePath, doc);
-
-            // Assert
-            Assert.That(File.Exists(_tempFilePath), Is.True);
-            var loadedDoc = await IniConfigManager.LoadAsync(_tempFilePath);
-            Assert.Multiple(() =>
-            {
-                Assert.That(loadedDoc.DefaultSection["key1"].Value, Is.EqualTo("value1"));
-                Assert.That(loadedDoc["Section1"]["key2"].Value, Is.EqualTo("value2"));
-            });
-        }
-
-        [Test]
-        public async Task SaveAsync_WithEncoding_SavesSuccessfully()
-        {
-            // Arrange
-            var doc = new Document();
-            doc.DefaultSection.AddProperty("key1", "value1");
-
-            // Act
-            await IniConfigManager.SaveAsync(_tempFilePath, Encoding.UTF8, doc);
-
-            // Assert
-            Assert.That(File.Exists(_tempFilePath), Is.True);
-            var content = await File.ReadAllTextAsync(_tempFilePath, Encoding.UTF8);
-            Assert.That(content, Does.Contain("key1 = value1"));
-        }
-
-        [Test]
-        public void SaveAsync_WithCancellationToken_CanBeCancelled()
-        {
-            // Arrange
-            var doc = new Document();
-            doc.DefaultSection.AddProperty("key1", "value1");
-            using var cts = new CancellationTokenSource();
-            cts.Cancel();
-
-            // Act & Assert
-            NUnit.Framework.Assert.ThrowsAsync<OperationCanceledException>(async () =>
-                await IniConfigManager.SaveAsync(_tempFilePath, doc, cts.Token));
-        }
-
-        [Test]
-        public async Task SaveAsync_ToStream_SavesSuccessfully()
+        public void Save_ToStream_SavesSuccessfully()
         {
             // Arrange
             var doc = new Document();
@@ -729,99 +600,17 @@ key2=value2";
             using var stream = new MemoryStream();
 
             // Act
-            await IniConfigManager.SaveAsync(stream, Encoding.UTF8, doc);
+            IniConfigManager.Save(stream, Encoding.UTF8, doc);
 
             // Assert
             stream.Position = 0;
             using var reader = new StreamReader(stream);
-            var content = await reader.ReadToEndAsync();
+            var content = reader.ReadToEnd();
             Assert.That(content, Does.Contain("key1 = value1"));
         }
 
         [Test]
-        public async Task LoadAsync_MultipleConcurrentOperations_HandlesCorrectly()
-        {
-            // Arrange
-            var tempFiles = new string[10];
-            for (int i = 0; i < 10; i++)
-            {
-                tempFiles[i] = Path.GetTempFileName();
-                File.WriteAllText(tempFiles[i], ValidIniContent);
-            }
-
-            try
-            {
-                // Act - Load multiple files concurrently
-                var tasks = tempFiles.Select(file => IniConfigManager.LoadAsync(file)).ToArray();
-                var documents = await Task.WhenAll(tasks);
-
-                // Assert
-                Assert.Multiple(() =>
-                {
-                    Assert.That(documents, Has.Length.EqualTo(10));
-                    foreach (var doc in documents)
-                    {
-                        Assert.That(doc.DefaultSection.PropertyCount, Is.EqualTo(2));
-                        Assert.That(doc.SectionCount, Is.EqualTo(2));
-                    }
-                });
-            }
-            finally
-            {
-                // Cleanup
-                foreach (var file in tempFiles)
-                {
-                    if (File.Exists(file))
-                        File.Delete(file);
-                }
-            }
-        }
-
-        [Test]
-        public async Task SaveAsync_MultipleConcurrentOperations_HandlesCorrectly()
-        {
-            // Arrange
-            var tempFiles = new string[10];
-            var documents = new Document[10];
-            for (int i = 0; i < 10; i++)
-            {
-                tempFiles[i] = Path.GetTempFileName();
-                documents[i] = new Document();
-                documents[i].DefaultSection.AddProperty($"key{i}", $"value{i}");
-            }
-
-            try
-            {
-                // Act - Save multiple files concurrently
-                var tasks = new Task[10];
-                for (int i = 0; i < 10; i++)
-                {
-                    var index = i;
-                    tasks[i] = IniConfigManager.SaveAsync(tempFiles[index], documents[index]);
-                }
-                await Task.WhenAll(tasks);
-
-                // Assert - Verify all files were saved correctly
-                for (int i = 0; i < 10; i++)
-                {
-                    Assert.That(File.Exists(tempFiles[i]), Is.True);
-                    var doc = await IniConfigManager.LoadAsync(tempFiles[i]);
-                    Assert.That(doc.DefaultSection[$"key{i}"].Value, Is.EqualTo($"value{i}"));
-                }
-            }
-            finally
-            {
-                // Cleanup
-                foreach (var file in tempFiles)
-                {
-                    if (File.Exists(file))
-                        File.Delete(file);
-                }
-            }
-        }
-
-        [Test]
-        public async Task LoadAsync_LargeFile_LoadsEfficiently()
+        public void Load_LargeFile_LoadsEfficiently()
         {
             // Arrange - Create a large INI file with 1000 sections and 10 properties each
             var sb = new StringBuilder();
@@ -837,7 +626,7 @@ key2=value2";
 
             // Act
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath);
+            var doc = IniConfigManager.Load(_tempFilePath);
             stopwatch.Stop();
 
             // Assert
@@ -851,7 +640,7 @@ key2=value2";
         }
 
         [Test]
-        public async Task SaveAsync_LargeFile_SavesEfficiently()
+        public void Save_LargeFile_SavesEfficiently()
         {
             // Arrange - Create a large document with 1000 sections
             var doc = new Document();
@@ -867,7 +656,7 @@ key2=value2";
 
             // Act
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            await IniConfigManager.SaveAsync(_tempFilePath, doc);
+            IniConfigManager.Save(_tempFilePath, doc);
             stopwatch.Stop();
 
             // Assert
@@ -877,40 +666,6 @@ key2=value2";
                 // Should save reasonably fast even with large documents
                 Assert.That(stopwatch.ElapsedMilliseconds, Is.LessThan(5000));
             });
-        }
-
-        [Test]
-        public void LoadAsync_NullFilePath_ThrowsArgumentException()
-        {
-#pragma warning disable CS8600, CS8625
-            NUnit.Framework.Assert.ThrowsAsync<ArgumentException>(async () =>
-                await IniConfigManager.LoadAsync((string)null));
-#pragma warning restore CS8600, CS8625
-        }
-
-        [Test]
-        public void LoadAsync_EmptyFilePath_ThrowsArgumentException()
-        {
-            NUnit.Framework.Assert.ThrowsAsync<ArgumentException>(async () =>
-                await IniConfigManager.LoadAsync(string.Empty));
-        }
-
-        [Test]
-        public void SaveAsync_NullFilePath_ThrowsArgumentException()
-        {
-            var doc = new Document();
-#pragma warning disable CS8600, CS8625
-            NUnit.Framework.Assert.ThrowsAsync<ArgumentException>(async () =>
-                await IniConfigManager.SaveAsync(null, doc));
-#pragma warning restore CS8600, CS8625
-        }
-
-        [Test]
-        public void SaveAsync_EmptyFilePath_ThrowsArgumentException()
-        {
-            var doc = new Document();
-            NUnit.Framework.Assert.ThrowsAsync<ArgumentException>(async () =>
-                await IniConfigManager.SaveAsync(string.Empty, doc));
         }
 
         #endregion
@@ -1002,22 +757,22 @@ Host=localhost
         }
 
         [Test]
-        public async Task LoadAsync_AfterLoading_GetSectionWorks()
+        public void Load_AfterLoading_GetSectionWorks_VerifyRegression()
         {
-            // Arrange - Test async version has same fix
+            // Arrange - Verify regression fix works
             var content = @"
-[AsyncSection]
+[SectionName]
 Key=Value
 ";
             File.WriteAllText(_tempFilePath, content);
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath);
+            var doc = IniConfigManager.Load(_tempFilePath);
 
             // Assert
-            var section = doc.GetSection("AsyncSection");
+            var section = doc.GetSection("SectionName");
             Assert.That(section, Is.Not.Null);
-            Assert.That(section!.Name, Is.EqualTo("AsyncSection"));
+            Assert.That(section!.Name, Is.EqualTo("SectionName"));
         }
 
         [Test]
@@ -1211,7 +966,7 @@ key3=value3";
         }
 
         [Test]
-        public async Task LoadAsync_DuplicateSection_MergePolicy_WorksCorrectly()
+        public void Load_DuplicateSection_MergePolicy_WorksCorrectly()
         {
             // Arrange
             var content = @"
@@ -1226,7 +981,7 @@ key2=value2";
             };
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+            var doc = IniConfigManager.Load(_tempFilePath, options);
 
             // Assert
             var section = doc["Section1"];
@@ -1355,7 +1110,7 @@ key1=value1";
         }
 
         [Test]
-        public async Task LoadAsync_WithCollectParsingErrors_CollectsAllErrors()
+        public void Load_WithCollectParsingErrors_CollectsAllErrors_VerifyRegression()
         {
             // Arrange
             var content = @"
@@ -1369,12 +1124,12 @@ key2=""unterminated";
             };
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+            var doc = IniConfigManager.Load(_tempFilePath, options);
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(3), "Should collect all parsing errors in async mode");
+                Assert.That(doc.ParsingErrors.Count, Is.EqualTo(3), "Should collect all parsing errors");
                 Assert.That(doc.ParsingErrors[0].Reason, Does.Contain("closing bracket"));
                 Assert.That(doc.ParsingErrors[1].Reason, Does.Contain("equals sign"));
                 Assert.That(doc.ParsingErrors[2].Reason, Does.Contain("Unterminated"));
@@ -1525,7 +1280,7 @@ validKey=validValue";
         }
 
         [Test]
-        public async Task LoadAsync_WithMaxParsingErrors_LimitsErrorCollection()
+        public void Load_WithMaxParsingErrors_LimitsErrorCollection_VerifyRegression()
         {
             // Arrange
             var content = @"
@@ -1542,10 +1297,10 @@ key3";
             };
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+            var doc = IniConfigManager.Load(_tempFilePath, options);
 
             // Assert
-            Assert.That(doc.ParsingErrors.Count, Is.EqualTo(2), "Async load should also respect MaxParsingErrors");
+            Assert.That(doc.ParsingErrors.Count, Is.EqualTo(2), "Load should respect MaxParsingErrors");
         }
 
         #endregion
@@ -1679,7 +1434,7 @@ key2=value2";
         }
 
         [Test]
-        public async Task LoadAsync_WithMaxSections_LimitsSectionCount()
+        public void Load_WithMaxSections_LimitsSectionCount_VerifyRegression()
         {
             // Arrange
             var content = @"
@@ -1697,7 +1452,7 @@ key3=value3";
             };
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+            var doc = IniConfigManager.Load(_tempFilePath, options);
 
             // Assert
             Assert.Multiple(() =>
@@ -1708,7 +1463,7 @@ key3=value3";
         }
 
         [Test]
-        public async Task LoadAsync_WithMaxPropertiesPerSection_LimitsPropertyCount()
+        public void Load_WithMaxPropertiesPerSection_LimitsPropertyCount_VerifyRegression()
         {
             // Arrange
             var content = @"
@@ -1724,7 +1479,7 @@ key3=value3";
             };
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+            var doc = IniConfigManager.Load(_tempFilePath, options);
 
             // Assert
             Assert.Multiple(() =>
@@ -1735,7 +1490,7 @@ key3=value3";
         }
 
         [Test]
-        public async Task LoadAsync_WithMaxValueLength_RejectsLongValues()
+        public void Load_WithMaxValueLength_RejectsLongValues_VerifyRegression()
         {
             // Arrange
             var longValue = new string('y', 60);
@@ -1751,7 +1506,7 @@ key2=short";
             };
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+            var doc = IniConfigManager.Load(_tempFilePath, options);
 
             // Assert
             Assert.Multiple(() =>
@@ -1763,7 +1518,7 @@ key2=short";
         }
 
         [Test]
-        public async Task LoadAsync_WithMaxLineLength_RejectsLongLines()
+        public void Load_WithMaxLineLength_RejectsLongLines_VerifyRegression()
         {
             // Arrange
             var longKey = "key" + new string('z', 150);
@@ -1779,7 +1534,7 @@ normalKey=normalValue";
             };
 
             // Act
-            var doc = await IniConfigManager.LoadAsync(_tempFilePath, options);
+            var doc = IniConfigManager.Load(_tempFilePath, options);
 
             // Assert
             Assert.Multiple(() =>
