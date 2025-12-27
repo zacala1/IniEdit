@@ -1,4 +1,4 @@
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Parsing
 {
     [TestFixture]
     public class LoadOptionsTests

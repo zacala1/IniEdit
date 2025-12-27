@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Parsing
 {
     [TestFixture]
     public class IniConfigManagerTests
@@ -478,7 +478,7 @@ key2=""value with \t tab""";
             IniConfigManager.Save(newFile, doc);
             var loadedContent = File.ReadAllText(newFile);
 
-            // Assert
+            // Assert - normalize line endings for cross-platform compatibility
             var expected = @"[Section1]
 key1 = ""simple value"" ; comment1
 key2 = ""value with \""quote\"""" ; comment2
@@ -488,7 +488,7 @@ key3 = unquoted value ; comment3
 ; Pre-comment
 key1 = ""value with \n newline""
 key2 = ""value with \t tab""";
-            Assert.That(loadedContent, Is.EqualTo(expected));
+            Assert.That(loadedContent.Replace("\r\n", "\n"), Is.EqualTo(expected.Replace("\r\n", "\n")));
         }
 
         [Test]

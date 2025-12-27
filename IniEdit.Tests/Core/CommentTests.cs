@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Core
 {
     [TestFixture]
     public class CommentTests

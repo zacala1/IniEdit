@@ -1,6 +1,6 @@
 using static IniEdit.IniConfigOption;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Core
 {
     [TestFixture]
     public class SectionTests

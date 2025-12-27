@@ -2,7 +2,7 @@ using IniEdit.Extensions;
 using NUnit.Framework;
 using Assert = NUnit.Framework.Legacy.ClassicAssert;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Extensions
 {
     [TestFixture]
     public class SnapshotExtensionsTests

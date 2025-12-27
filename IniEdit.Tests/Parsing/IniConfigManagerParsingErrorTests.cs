@@ -5,7 +5,7 @@ using System.Text;
 using IniEdit;
 using NUnit.Framework;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Parsing
 {
     [TestFixture]
     public class IniConfigManagerParsingErrorTests

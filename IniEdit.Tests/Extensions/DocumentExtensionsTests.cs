@@ -1,4 +1,4 @@
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Extensions
 {
     [TestFixture]
     public class DocumentExtensionsTests

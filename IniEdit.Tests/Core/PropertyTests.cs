@@ -1,6 +1,6 @@
 using Newtonsoft.Json.Linq;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Core
 {
     [TestFixture]
     public class PropertyTests

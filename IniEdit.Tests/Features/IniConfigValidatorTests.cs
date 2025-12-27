@@ -1,4 +1,4 @@
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Features
 {
     [TestFixture]
     public class IniConfigValidatorTests

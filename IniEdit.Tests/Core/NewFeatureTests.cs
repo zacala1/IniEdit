@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using Assert = NUnit.Framework.Legacy.ClassicAssert;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Core
 {
     /// <summary>
     /// Tests for new features added in v2.0

@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Xml;
 using Assert = NUnit.Framework.Legacy.ClassicAssert;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Features
 {
     [TestFixture]
     public class DocumentExporterTests

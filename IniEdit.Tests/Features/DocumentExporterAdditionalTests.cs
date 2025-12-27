@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Xml;
 using Assert = NUnit.Framework.Legacy.ClassicAssert;
 
-namespace IniEdit.Tests
+namespace IniEdit.Tests.Features
 {
     /// <summary>
     /// Additional tests to improve coverage for DocumentExporter.
