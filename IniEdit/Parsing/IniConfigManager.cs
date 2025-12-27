@@ -577,6 +577,9 @@ namespace IniEdit
         {
             foreach (var section in sections)
             {
+                if (section == null)
+                    continue;
+
                 var properties = section.GetInternalProperties();
 
                 // Optimized O(n) algorithm: same pattern as DeduplicateSectionOnLastWin

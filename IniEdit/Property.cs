@@ -291,8 +291,8 @@ namespace IniEdit
 
                 string valueStr = item.ToString();
 
-                // Handle quoted strings
-                if (valueStr.StartsWith("\"") && valueStr.EndsWith("\""))
+                // Handle quoted strings (minimum length 2 for empty quotes "")
+                if (valueStr.Length >= 2 && valueStr.StartsWith("\"") && valueStr.EndsWith("\""))
                 {
                     valueStr = valueStr.Substring(1, valueStr.Length - 2)
                                       .Replace("\\\"", "\"");
