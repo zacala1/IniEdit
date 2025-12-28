@@ -4,7 +4,15 @@ namespace IniEdit
 {
     public static class EnvironmentVariableExtensions
     {
-        private static readonly Regex EnvVarPattern = new Regex(@"\$\{([^}]+)\}|%([^%]+)%", RegexOptions.Compiled);
+        /// <summary>
+        /// Timeout for regex operations to prevent ReDoS attacks.
+        /// </summary>
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(5);
+
+        private static readonly Regex EnvVarPattern = new Regex(
+            @"\$\{([^}]+)\}|%([^%]+)%",
+            RegexOptions.Compiled,
+            RegexTimeout);
 
         /// <summary>
         /// Substitutes environment variables in property values.

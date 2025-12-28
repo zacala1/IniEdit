@@ -2211,6 +2211,9 @@ namespace IniEdit.GUI
             // Unsubscribe form events
             this.KeyDown -= OnFormKeyDown;
 
+            // Unsubscribe ThemeManager events (static event - must unsubscribe to prevent memory leak)
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+
             // Unsubscribe CommandManager events
             _commandManager.StateChanged -= OnCommandManagerStateChanged;
 

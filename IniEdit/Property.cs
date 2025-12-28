@@ -55,7 +55,7 @@ namespace IniEdit
         /// <param name="value">The value of the property.</param>
         public Property(string name, string value) : base(name)
         {
-            _value = value;
+            _value = value ?? string.Empty;
         }
 
         /// <summary>
