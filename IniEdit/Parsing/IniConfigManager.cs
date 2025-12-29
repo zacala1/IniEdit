@@ -20,6 +20,11 @@ namespace IniEdit
         /// <summary>
         /// Occurs when a parsing error is encountered during file loading.
         /// </summary>
+        /// <remarks>
+        /// This is a static event. In multi-threaded scenarios, consider using
+        /// <see cref="IniConfigOption.CollectParsingErrors"/> instead, as static event
+        /// subscriptions can lead to unexpected behavior when multiple threads are loading files concurrently.
+        /// </remarks>
         public static event EventHandler<ParsingErrorEventArgs>? ParsingError;
 
         /// <summary>
@@ -124,6 +129,7 @@ namespace IniEdit
         /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
         /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
         /// <exception cref="IOException">Thrown when an I/O error occurs while opening the file.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when duplicate sections or properties are found and the corresponding policy is set to <see cref="DuplicateSectionPolicyType.ThrowError"/> or <see cref="DuplicateKeyPolicyType.ThrowError"/>.</exception>
         public static Document Load(string filePath, IniConfigOption? option = null)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -146,6 +152,7 @@ namespace IniEdit
         /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
         /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
         /// <exception cref="IOException">Thrown when an I/O error occurs while opening the file.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when duplicate sections or properties are found and the corresponding policy is set to <see cref="DuplicateSectionPolicyType.ThrowError"/> or <see cref="DuplicateKeyPolicyType.ThrowError"/>.</exception>
         public static Document Load(string filePath, Encoding encoding, IniConfigOption? option = null)
         {
             if (string.IsNullOrEmpty(filePath))
@@ -167,6 +174,7 @@ namespace IniEdit
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> or <paramref name="encoding"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when the stream is not readable.</exception>
         /// <exception cref="IOException">Thrown when an I/O error occurs while reading the stream.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when duplicate sections or properties are found and the corresponding policy is set to <see cref="DuplicateSectionPolicyType.ThrowError"/> or <see cref="DuplicateKeyPolicyType.ThrowError"/>.</exception>
         public static Document Load(Stream stream, Encoding encoding, IniConfigOption? option = null)
         {
             if (stream == null)

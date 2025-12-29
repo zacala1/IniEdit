@@ -124,7 +124,7 @@ namespace IniEdit
         /// <remarks>
         /// WARNING: This indexer auto-creates sections if they don't exist. This means typos
         /// in section names will silently create empty sections. Use <see cref="TryGetSection"/>
-        /// or <see cref="HasSection"/> to check for existence without auto-creating.
+        /// or <see cref="HasSection(string)"/> to check for existence without auto-creating.
         /// </remarks>
         public Section this[string name]
         {

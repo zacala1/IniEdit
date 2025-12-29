@@ -53,6 +53,7 @@ namespace IniEdit.GUI
         // Validation and Statistics
         private ToolStripStatusLabel? _encodingStatusLabel;
         private ToolStripStatusLabel? _validationStatusLabel;
+        private ToolStripStatusLabel? _envVarStatusLabel;
 
         // Performance optimization caches
         private Font? _duplicateKeyFont;
@@ -346,6 +347,16 @@ namespace IniEdit.GUI
             };
             _validationStatusLabel.Click += ShowValidationDialog;
             statusStrip1.Items.Add(_validationStatusLabel);
+
+            // Add environment variable preview label
+            _envVarStatusLabel = new ToolStripStatusLabel
+            {
+                Text = "",
+                BorderSides = ToolStripStatusLabelBorderSides.Right,
+                BorderStyle = Border3DStyle.Etched,
+                Visible = false
+            };
+            statusStrip1.Items.Add(_envVarStatusLabel);
         }
 
         private void SetupCommandManager()
@@ -816,6 +827,74 @@ namespace IniEdit.GUI
                     _validationStatusLabel.IsLink = false;
                 }
             }
+
+            // Update environment variable preview
+            UpdateEnvVarPreview();
+        }
+
+        private void UpdateEnvVarPreview()
+        {
+            if (_envVarStatusLabel == null)
+                return;
+
+            if (propertyView.SelectedItems.Count != 1)
+            {
+                _envVarStatusLabel.Visible = false;
+                return;
+            }
+
+            string value = propertyView.SelectedItems[0].SubItems[1].Text;
+            var (hasEnvVars, expandedValue, missingVars) = ExpandEnvironmentVariables(value);
+
+            if (!hasEnvVars)
+            {
+                _envVarStatusLabel.Visible = false;
+                return;
+            }
+
+            _envVarStatusLabel.Visible = true;
+
+            if (missingVars.Count > 0)
+            {
+                _envVarStatusLabel.Text = $"⚠ Missing: {string.Join(", ", missingVars)}";
+                _envVarStatusLabel.ForeColor = Color.FromArgb(180, 0, 0); // Dark red
+                _envVarStatusLabel.ToolTipText = $"Environment variables not found: {string.Join(", ", missingVars)}";
+            }
+            else
+            {
+                _envVarStatusLabel.Text = $"→ {expandedValue}";
+                _envVarStatusLabel.ForeColor = Color.FromArgb(0, 100, 0); // Dark green
+                _envVarStatusLabel.ToolTipText = $"Expanded value: {expandedValue}";
+            }
+        }
+
+        private static (bool HasEnvVars, string ExpandedValue, List<string> MissingVars) ExpandEnvironmentVariables(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return (false, value, new List<string>());
+
+            var missingVars = new List<string>();
+            bool hasEnvVars = false;
+
+            // Pattern: ${VAR} or %VAR%
+            var pattern = new Regex(@"\$\{([^}]+)\}|%([^%]+)%", RegexOptions.None, TimeSpan.FromMilliseconds(100));
+
+            string expanded = pattern.Replace(value, match =>
+            {
+                hasEnvVars = true;
+                string varName = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                string? envValue = Environment.GetEnvironmentVariable(varName);
+
+                if (envValue == null)
+                {
+                    missingVars.Add(varName);
+                    return match.Value; // Keep original
+                }
+
+                return envValue;
+            });
+
+            return (hasEnvVars, expanded, missingVars);
         }
 
         private void SetupInlineCellEditor()

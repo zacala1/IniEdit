@@ -13,19 +13,10 @@ Document Load(string filePath, Encoding encoding, IniConfigOption option)
 Document Load(Stream stream, Encoding encoding, IniConfigOption option)
 ```
 
-### LoadAsync
-
-```csharp
-Task<Document> LoadAsync(string filePath)
-Task<Document> LoadAsync(string filePath, Encoding encoding)
-Task<Document> LoadAsync(Stream stream, Encoding encoding, IniConfigOption option, CancellationToken cancellationToken)
-```
-
 ### LoadWithOptions
 
 ```csharp
 Document LoadWithOptions(string filePath, LoadOptions options)
-Task<Document> LoadWithOptionsAsync(string filePath, LoadOptions options)
 ```
 
 ### Save
@@ -34,14 +25,7 @@ Task<Document> LoadWithOptionsAsync(string filePath, LoadOptions options)
 void Save(string filePath, Document doc)
 void Save(string filePath, Encoding encoding, Document doc)
 void Save(Stream stream, Encoding encoding, Document doc)
-```
-
-### SaveAsync
-
-```csharp
-Task SaveAsync(string filePath, Document doc)
-Task SaveAsync(string filePath, Encoding encoding, Document doc)
-Task SaveAsync(Stream stream, Encoding encoding, Document doc, CancellationToken cancellationToken)
+void Save(Stream stream, Encoding encoding, Document doc, SaveOptions options)
 ```
 
 ### 이벤트
@@ -337,17 +321,6 @@ Document CopyWithSections(this Document source, Func<Section, bool> sectionFilte
 Section CopyWithProperties(this Section source, Func<Property, bool> propertyFilter)
 ```
 
-### EnvironmentVariablesExtensions
-
-```csharp
-// 환경변수 치환 (%VAR% 또는 $VAR 형식)
-string SubstituteEnvironmentVariablesInValue(this Property property)
-void SubstituteEnvironmentVariables(this Property property)
-void SubstituteEnvironmentVariables(this Section section)
-void SubstituteEnvironmentVariables(this Document document)
-bool TrySubstituteEnvironmentVariables(this Property property, out string substituted)
-```
-
 ### SnapshotExtensions
 
 ```csharp
@@ -418,3 +391,54 @@ IReadOnlyList<ParsingErrorEventArgs> Errors { get; }
 | `LineNumber` | `int` | 에러 발생 줄 번호 |
 | `Line` | `string` | 에러 발생 줄 내용 |
 | `Reason` | `string` | 에러 원인 |
+
+---
+
+## Serialization
+
+### IniSerializer
+
+C# 객체와 INI 문서 간 변환을 담당하는 정적 클래스입니다.
+
+```csharp
+// 역직렬화
+T Deserialize<T>(Document document) where T : new()
+object Deserialize(Document document, Type type)
+
+// 직렬화
+Document Serialize<T>(T obj, IniConfigOption? option = null)
+
+// 유효성 검사
+void ValidateTypeStructure(Type type)
+```
+
+**설계 제약:**
+
+- 중첩 깊이는 최대 1단계 (루트 클래스 → 섹션 클래스)
+- 2단계 이상 중첩 시 `IniSerializationException` 발생
+- 순환 참조 불허
+
+### Attributes
+
+```csharp
+// 섹션 이름 지정
+[IniSection("SectionName")]
+public DatabaseConfig Database { get; set; }
+
+// 키 이름 및 기본값 지정
+[IniProperty("custom_key")]
+[IniProperty(DefaultValue = 8080)]
+public int Port { get; set; }
+
+// 직렬화 제외
+[IniIgnore]
+public string CachedValue { get; set; }
+```
+
+### IniSerializationException
+
+직렬화/역직렬화 중 발생하는 예외입니다.
+
+- 중첩 깊이 초과
+- 순환 참조 감지
+- 타입 변환 실패

@@ -5,13 +5,24 @@
     <LangVersion>13.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-	<PackageId>IniEdit</PackageId>
-	<Version>0.1.0</Version>
-	<Authors>zacala1</Authors>
-	<Description>INI configuration parser and writer for .NET applications</Description>
-    <PackageTags>ini;configuration;parser;dotnet</PackageTags>
-	<PackageLicenseExpression>MIT</PackageLicenseExpression>
-	<RepositoryUrl>https://github.com/zacala1/IniEdit</RepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- NuGet Package Metadata -->
+    <PackageId>IniEdit</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>zacala1</Authors>
+    <Copyright>Copyright (c) 2025 zacala1</Copyright>
+    <Description>A comprehensive INI configuration file parser and writer for .NET applications. Features include section/property management, comments preservation, schema validation, document comparison, and export to JSON/XML/CSV formats.</Description>
+    <PackageTags>ini;configuration;parser;config;settings;dotnet;csharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/zacala1/IniEdit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/zacala1/IniEdit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

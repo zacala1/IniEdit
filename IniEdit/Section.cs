@@ -58,7 +58,7 @@ namespace IniEdit
         /// <remarks>
         /// WARNING: This indexer auto-creates properties if they don't exist. This means typos
         /// in property keys will silently create empty properties. Use <see cref="TryGetProperty"/>
-        /// or <see cref="HasProperty"/> to check for existence without auto-creating.
+        /// or <see cref="HasProperty(string)"/> to check for existence without auto-creating.
         /// </remarks>
         public Property this[string key]
         {

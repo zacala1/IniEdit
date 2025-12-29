@@ -2,7 +2,7 @@
 
 .NET 8.0용 INI 설정 파일 파서 및 에디터입니다.
 
-주석, 배열, 타입 변환, 비동기 I/O를 지원하며 GUI 에디터도 포함되어 있습니다.
+주석, 배열, 타입 변환을 지원하며 GUI 에디터도 포함되어 있습니다.
 
 ## 설치
 
@@ -43,10 +43,9 @@ IniConfigManager.Save("config.ini", doc);
 - **배열 지원**: `{item1, item2, "quoted item"}` 형식
 - **이스케이프 시퀀스**: `\0`, `\t`, `\n`, `\\`, `\"` 등
 - **중복 처리 정책**: FirstWin, LastWin, Merge, ThrowError
-- **비동기 I/O**: `LoadAsync()`, `SaveAsync()`
 - **스냅샷**: 문서 상태 저장 및 복원
 - **문서 비교**: 두 INI 파일 간 diff
-- **환경 변수 치환**: `${VAR}`, `%VAR%` 문법
+- **직렬화**: C# 객체 ↔ INI 문서 변환
 
 ## 문서 생성하기
 
@@ -72,13 +71,6 @@ IniConfigManager.Save("config.ini", doc);
 [Database]
 Host = localhost
 Port = 5432
-```
-
-## 비동기 처리
-
-```csharp
-var doc = await IniConfigManager.LoadAsync("config.ini");
-await IniConfigManager.SaveAsync("config.ini", doc);
 ```
 
 ## 안전한 값 접근
@@ -121,6 +113,7 @@ dotnet run
 
 - [Configuration Options](docs/configuration.md) - 파싱 옵션 설정
 - [Advanced Features](docs/advanced.md) - 스냅샷, Diff, 필터링 등
+- [Serialization](docs/serialization.md) - 객체 직렬화/역직렬화
 - [API Reference](docs/api-reference.md) - 전체 API 문서
 
 ## 라이선스
