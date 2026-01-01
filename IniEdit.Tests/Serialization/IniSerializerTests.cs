@@ -800,6 +800,316 @@ namespace IniEdit.Tests.Serialization
                 IniSerializer.Deserialize<SimpleConfig>(doc));
         }
 
+        [Test]
+        public void Deserialize_InvalidTimeSpanFormat_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("CreatedAt", "2025-01-15");
+            doc.DefaultSection.AddProperty("Timeout", "invalid-timespan");
+            doc.DefaultSection.AddProperty("Id", "a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+            doc.DefaultSection.AddProperty("Price", "100");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<ConfigWithDateTime>(doc));
+        }
+
+        [Test]
+        public void Deserialize_InvalidGuidFormat_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("CreatedAt", "2025-01-15");
+            doc.DefaultSection.AddProperty("Timeout", "00:05:00");
+            doc.DefaultSection.AddProperty("Id", "not-a-valid-guid");
+            doc.DefaultSection.AddProperty("Price", "100");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<ConfigWithDateTime>(doc));
+        }
+
+        [Test]
+        public void Deserialize_InvalidDateTimeFormat_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("CreatedAt", "not-a-date");
+            doc.DefaultSection.AddProperty("Timeout", "00:05:00");
+            doc.DefaultSection.AddProperty("Id", "a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+            doc.DefaultSection.AddProperty("Price", "100");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<ConfigWithDateTime>(doc));
+        }
+
+        [Test]
+        public void Deserialize_InvalidDecimalFormat_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("CreatedAt", "2025-01-15");
+            doc.DefaultSection.AddProperty("Timeout", "00:05:00");
+            doc.DefaultSection.AddProperty("Id", "a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+            doc.DefaultSection.AddProperty("Price", "not-a-number");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<ConfigWithDateTime>(doc));
+        }
+
+        [Test]
+        public void Deserialize_InvalidBooleanValue_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Name", "Test");
+            doc.DefaultSection.AddProperty("Port", "8080");
+            doc.DefaultSection.AddProperty("Enabled", "not-a-boolean");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<SimpleConfig>(doc));
+        }
+
+        [Test]
+        public void Deserialize_InvalidDoubleValue_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Latitude", "not-a-double");
+            doc.DefaultSection.AddProperty("Longitude", "126.978");
+            doc.DefaultSection.AddProperty("BigNumber", "100");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<ConfigWithDoubleAndFloat>(doc));
+        }
+
+        [Test]
+        public void Deserialize_InvalidFloatValue_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Latitude", "37.5665");
+            doc.DefaultSection.AddProperty("Longitude", "not-a-float");
+            doc.DefaultSection.AddProperty("BigNumber", "100");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<ConfigWithDoubleAndFloat>(doc));
+        }
+
+        [Test]
+        public void Deserialize_InvalidLongValue_ThrowsIniSerializationException()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Latitude", "37.5665");
+            doc.DefaultSection.AddProperty("Longitude", "126.978");
+            doc.DefaultSection.AddProperty("BigNumber", "not-a-long");
+
+            // Act & Assert
+            Assert.Throws<IniSerializationException>(() =>
+                IniSerializer.Deserialize<ConfigWithDoubleAndFloat>(doc));
+        }
+
+        [Test]
+        public void Deserialize_EmptyTimeSpan_LeavesDefault()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("CreatedAt", "2025-01-15");
+            doc.DefaultSection.AddProperty("Timeout", "");
+            doc.DefaultSection.AddProperty("Id", "a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+            doc.DefaultSection.AddProperty("Price", "100");
+
+            // Act
+            var config = IniSerializer.Deserialize<ConfigWithDateTime>(doc);
+
+            // Assert - empty TimeSpan should leave default (TimeSpan.Zero)
+            Assert.That(config.Timeout, Is.EqualTo(TimeSpan.Zero));
+        }
+
+        [Test]
+        public void Deserialize_EmptyGuid_LeavesDefault()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("CreatedAt", "2025-01-15");
+            doc.DefaultSection.AddProperty("Timeout", "00:05:00");
+            doc.DefaultSection.AddProperty("Id", "");
+            doc.DefaultSection.AddProperty("Price", "100");
+
+            // Act
+            var config = IniSerializer.Deserialize<ConfigWithDateTime>(doc);
+
+            // Assert - empty Guid should leave default (Guid.Empty)
+            Assert.That(config.Id, Is.EqualTo(Guid.Empty));
+        }
+
+        [Test]
+        public void Serialize_WithIniConfigOption_UsesOption()
+        {
+            // Arrange
+            var config = new SimpleConfig { Name = "Test", Port = 8080, Enabled = true };
+            var option = new IniConfigOption { DefaultCommentPrefixChar = '#' };
+
+            // Act
+            var doc = IniSerializer.Serialize(config, option);
+
+            // Assert
+            Assert.That(doc.DefaultCommentPrefixChar, Is.EqualTo('#'));
+        }
+
+        [Test]
+        public void Validate_SimpleConfig_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => IniSerializer.ValidateTypeStructure(typeof(SimpleConfig)));
+        }
+
+        [Test]
+        public void Validate_ConfigWithArray_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => IniSerializer.ValidateTypeStructure(typeof(ConfigWithArray)));
+        }
+
+        [Test]
+        public void Validate_ConfigWithNullable_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => IniSerializer.ValidateTypeStructure(typeof(ConfigWithNullable)));
+        }
+
+        [Test]
+        public void Deserialize_NullableIntWithEmptyValue_ReturnsNull()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("OptionalPort", "");
+
+            // Act
+            var config = IniSerializer.Deserialize<ConfigWithNullable>(doc);
+
+            // Assert
+            Assert.That(config.OptionalPort, Is.Null);
+        }
+
+        [Test]
+        public void Deserialize_NullableBoolWithEmptyValue_ReturnsNull()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("OptionalEnabled", "");
+
+            // Act
+            var config = IniSerializer.Deserialize<ConfigWithNullable>(doc);
+
+            // Assert
+            Assert.That(config.OptionalEnabled, Is.Null);
+        }
+
+        [Test]
+        public void RoundTrip_ConfigWithArray_PreservesData()
+        {
+            // Arrange
+            var original = new ConfigWithArray
+            {
+                Tags = new[] { "web", "api", "backend" },
+                Ports = new[] { 80, 443, 8080 }
+            };
+
+            // Act
+            var doc = IniSerializer.Serialize(original);
+            var restored = IniSerializer.Deserialize<ConfigWithArray>(doc);
+
+            // Assert
+            Assert.That(restored.Tags, Is.EqualTo(original.Tags));
+            Assert.That(restored.Ports, Is.EqualTo(original.Ports));
+        }
+
+        [Test]
+        public void RoundTrip_ConfigWithNullable_PreservesNullValues()
+        {
+            // Arrange
+            var original = new ConfigWithNullable
+            {
+                OptionalPort = null,
+                OptionalEnabled = null
+            };
+
+            // Act
+            var doc = IniSerializer.Serialize(original);
+            var restored = IniSerializer.Deserialize<ConfigWithNullable>(doc);
+
+            // Assert - null values should be preserved
+            Assert.That(restored.OptionalPort, Is.Null);
+            Assert.That(restored.OptionalEnabled, Is.Null);
+        }
+
+        [Test]
+        public void RoundTrip_ConfigWithNullable_PreservesValues()
+        {
+            // Arrange
+            var original = new ConfigWithNullable
+            {
+                OptionalPort = 9000,
+                OptionalEnabled = true
+            };
+
+            // Act
+            var doc = IniSerializer.Serialize(original);
+            var restored = IniSerializer.Deserialize<ConfigWithNullable>(doc);
+
+            // Assert
+            Assert.That(restored.OptionalPort, Is.EqualTo(9000));
+            Assert.That(restored.OptionalEnabled, Is.True);
+        }
+
+        [Test]
+        public void RoundTrip_ConfigWithEnum_PreservesValue()
+        {
+            // Arrange
+            var original = new ConfigWithEnum { Level = LogLevel.Error };
+
+            // Act
+            var doc = IniSerializer.Serialize(original);
+            var restored = IniSerializer.Deserialize<ConfigWithEnum>(doc);
+
+            // Assert
+            Assert.That(restored.Level, Is.EqualTo(LogLevel.Error));
+        }
+
+        [Test]
+        public void RoundTrip_ConfigWithNullableEnum_PreservesValue()
+        {
+            // Arrange
+            var original = new ConfigWithNullableEnum { OptionalLevel = LogLevel.Warning };
+
+            // Act
+            var doc = IniSerializer.Serialize(original);
+            var restored = IniSerializer.Deserialize<ConfigWithNullableEnum>(doc);
+
+            // Assert
+            Assert.That(restored.OptionalLevel, Is.EqualTo(LogLevel.Warning));
+        }
+
+        [Test]
+        public void RoundTrip_ConfigWithDefaults_PreservesValues()
+        {
+            // Arrange
+            var original = new ConfigWithDefaults { Name = "CustomName", Port = 9090 };
+
+            // Act
+            var doc = IniSerializer.Serialize(original);
+            var restored = IniSerializer.Deserialize<ConfigWithDefaults>(doc);
+
+            // Assert
+            Assert.That(restored.Name, Is.EqualTo("CustomName"));
+            Assert.That(restored.Port, Is.EqualTo(9090));
+        }
+
         #endregion
     }
 }
