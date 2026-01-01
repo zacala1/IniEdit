@@ -119,19 +119,6 @@ namespace IniEdit.Tests.Core
         #region Section Management Tests
 
         [Test]
-        [Ignore("Policy changed: AddSection_NullSection now throws exception")]
-        public void AddSection_NullSection_DoesNothing()
-        {
-            // Act
-#pragma warning disable CS8600, CS8625
-            _document.AddSection((Section)null);
-#pragma warning restore CS8600, CS8625
-
-            // Assert
-            Assert.That(_document.SectionCount, Is.Zero);
-        }
-
-        [Test]
         public void AddSection_NullSection_ThrowsException()
         {
             // Arrange
@@ -275,26 +262,6 @@ namespace IniEdit.Tests.Core
         {
             Assert.That(_document.GetSectionByIndex(-1), Is.Null);
             Assert.That(_document.GetSectionByIndex(999), Is.Null);
-        }
-
-        [Test]
-        [Ignore("Policy changed: duplicate sections are no longer allowed")]
-        public void AddSection_DuplicateName_HandlesCorrectly()
-        {
-            // Arrange
-            _document.AddSection(TEST_SECTION_NAME);
-            var section2 = new Section(TEST_SECTION_NAME);
-            section2.AddProperty("Key", "Value");
-
-            // Act
-            _document.AddSection(section2);
-
-            // Assert
-            Assert.Multiple(() =>
-            {
-                Assert.That(_document.SectionCount, Is.EqualTo(2));
-                Assert.That(_document.GetSections().Count(s => s.Name == TEST_SECTION_NAME), Is.EqualTo(2));
-            });
         }
 
         [Test]

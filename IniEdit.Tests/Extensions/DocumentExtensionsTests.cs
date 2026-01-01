@@ -479,5 +479,186 @@ namespace IniEdit.Tests.Extensions
         }
 
         #endregion
+
+        #region Additional Coverage Tests
+
+        [Test]
+        public void SortPropertiesByValue_Document_SortsAllSectionsPropertiesByValue()
+        {
+            // Arrange
+            var doc = new Document();
+            doc["Section1"].AddProperty("Key1", "Zebra");
+            doc["Section1"].AddProperty("Key2", "Alpha");
+            doc["Section2"].AddProperty("Key3", "Delta");
+            doc["Section2"].AddProperty("Key4", "Beta");
+
+            // Act
+            doc.SortPropertiesByValue();
+
+            // Assert
+            var section1Props = doc["Section1"].GetProperties().ToList();
+            var section2Props = doc["Section2"].GetProperties().ToList();
+            Assert.Multiple(() =>
+            {
+                Assert.That(section1Props[0].Value, Is.EqualTo("Alpha"));
+                Assert.That(section1Props[1].Value, Is.EqualTo("Zebra"));
+                Assert.That(section2Props[0].Value, Is.EqualTo("Beta"));
+                Assert.That(section2Props[1].Value, Is.EqualTo("Delta"));
+            });
+        }
+
+        [Test]
+        public void SortPropertiesByValue_Document_NullDocument_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Document? doc = null;
+
+            // Act & Assert
+#pragma warning disable CS8604
+            var ex = Assert.Throws<ArgumentNullException>(() => doc!.SortPropertiesByValue());
+#pragma warning restore CS8604
+            Assert.That(ex!.ParamName, Is.EqualTo("doc"));
+        }
+
+        [Test]
+        public void SortPropertiesByValue_Document_IncludeDefaultSection_SortsDefaultSectionToo()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Key1", "Zebra");
+            doc.DefaultSection.AddProperty("Key2", "Alpha");
+
+            // Act
+            doc.SortPropertiesByValue(includeDefaultSection: true);
+
+            // Assert
+            var defaultProps = doc.DefaultSection.GetProperties().ToList();
+            Assert.Multiple(() =>
+            {
+                Assert.That(defaultProps[0].Value, Is.EqualTo("Alpha"));
+                Assert.That(defaultProps[1].Value, Is.EqualTo("Zebra"));
+            });
+        }
+
+        [Test]
+        public void SortPropertiesByValue_Section_NullSection_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Section? section = null;
+
+            // Act & Assert
+#pragma warning disable CS8604
+            var ex = Assert.Throws<ArgumentNullException>(() => section!.SortPropertiesByValue());
+#pragma warning restore CS8604
+            Assert.That(ex!.ParamName, Is.EqualTo("section"));
+        }
+
+        [Test]
+        public void SortProperties_Document_CustomComparison_AppliestoAllSections()
+        {
+            // Arrange
+            var doc = new Document();
+            doc["Section1"].AddProperty("Key1", "Short");
+            doc["Section1"].AddProperty("Key2", "VeryLongValue");
+
+            // Act
+            doc.SortProperties((a, b) => a.Value.Length.CompareTo(b.Value.Length));
+
+            // Assert
+            var props = doc["Section1"].GetProperties().ToList();
+            Assert.That(props[0].Value, Is.EqualTo("Short"));
+            Assert.That(props[1].Value, Is.EqualTo("VeryLongValue"));
+        }
+
+        [Test]
+        public void SortProperties_Document_NullDocument_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Document? doc = null;
+
+            // Act & Assert
+#pragma warning disable CS8604
+            var ex = Assert.Throws<ArgumentNullException>(() => doc!.SortProperties((a, b) => 0));
+#pragma warning restore CS8604
+            Assert.That(ex!.ParamName, Is.EqualTo("doc"));
+        }
+
+        [Test]
+        public void SortProperties_Document_NullComparison_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var doc = new Document();
+
+            // Act & Assert
+            var ex = Assert.Throws<ArgumentNullException>(() => doc.SortProperties(null!));
+            Assert.That(ex!.ParamName, Is.EqualTo("comparison"));
+        }
+
+        [Test]
+        public void SortProperties_Document_IncludeDefaultSection_AppliesCustomComparisonToDefaultSection()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Key1", "LongValue");
+            doc.DefaultSection.AddProperty("Key2", "A");
+
+            // Act
+            doc.SortProperties((a, b) => a.Value.Length.CompareTo(b.Value.Length), includeDefaultSection: true);
+
+            // Assert
+            var props = doc.DefaultSection.GetProperties().ToList();
+            Assert.That(props[0].Value, Is.EqualTo("A"));
+            Assert.That(props[1].Value, Is.EqualTo("LongValue"));
+        }
+
+        [Test]
+        public void SortSections_NullComparison_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var doc = new Document();
+
+            // Act & Assert
+            var ex = Assert.Throws<ArgumentNullException>(() => doc.SortSections(null!));
+            Assert.That(ex!.ParamName, Is.EqualTo("comparison"));
+        }
+
+        [Test]
+        public void SortPropertiesByValue_Document_Descending_SortsInReverseOrder()
+        {
+            // Arrange
+            var doc = new Document();
+            doc["Section1"].AddProperty("Key1", "Alpha");
+            doc["Section1"].AddProperty("Key2", "Zebra");
+
+            // Act
+            doc.SortPropertiesByValue(descending: true);
+
+            // Assert
+            var props = doc["Section1"].GetProperties().ToList();
+            Assert.Multiple(() =>
+            {
+                Assert.That(props[0].Value, Is.EqualTo("Zebra"));
+                Assert.That(props[1].Value, Is.EqualTo("Alpha"));
+            });
+        }
+
+        [Test]
+        public void SortAllByName_Descending_SortsBothInReverseOrder()
+        {
+            // Arrange
+            var doc = new Document();
+            doc["Alpha"].AddProperty("Key1", "1");
+            doc["Zebra"].AddProperty("Key2", "2");
+
+            // Act
+            doc.SortAllByName(descending: true);
+
+            // Assert
+            var sections = doc.ToList();
+            Assert.That(sections[0].Name, Is.EqualTo("Zebra"));
+            Assert.That(sections[1].Name, Is.EqualTo("Alpha"));
+        }
+
+        #endregion
     }
 }

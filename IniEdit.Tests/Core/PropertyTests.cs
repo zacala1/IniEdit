@@ -95,35 +95,9 @@ namespace IniEdit.Tests.Core
 #pragma warning restore CS8600, CS8625
         }
 
-        [Test]
-        [Ignore("Passing null to non-nullable string in nullable enabled context is not intended behavior")]
-        public void Constructor_WithNameAndNullValue_CreatesPropertyWithEmptyValue()
-        {
-            // Arrange & Act
-#pragma warning disable CS8625
-            var property = new Property("TestKey", null);
-#pragma warning restore CS8625
-
-            // Assert
-            Assert.That(property.Value, Is.Empty);
-        }
-
         #endregion
 
         #region Basic Value Tests
-
-        [Test]
-        [Ignore("Passing null to non-nullable string in nullable enabled context is not intended behavior")]
-        public void Value_SetNull_ConvertedToEmptyString()
-        {
-            // Arrange & Act
-#pragma warning disable CS8600, CS8625
-            _property.Value = null;
-#pragma warning restore CS8600, CS8625
-
-            // Assert
-            Assert.That(_property.Value, Is.Empty);
-        }
 
         [Test]
         public void IsEmpty_EmptyStringValue()
