@@ -54,7 +54,7 @@ namespace IniEdit
                 throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
 
             var json = ToJson(document, options);
-            File.WriteAllText(filePath, json, Encoding.UTF8);
+            WriteAllTextAtomic(filePath, json, Encoding.UTF8);
         }
 
         private static void WriteDocumentAsJson(Utf8JsonWriter writer, Document document, JsonExportOptions options)
@@ -195,6 +195,27 @@ namespace IniEdit
 
         #endregion
 
+        #region Helpers
+
+        private static void WriteAllTextAtomic(string filePath, string content, Encoding encoding)
+        {
+            var directory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? ".";
+            var tempFilePath = Path.Combine(directory, $".{Path.GetFileName(filePath)}.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllText(tempFilePath, content, encoding);
+                File.Move(tempFilePath, filePath, overwrite: true);
+            }
+            catch
+            {
+                try { if (File.Exists(tempFilePath)) File.Delete(tempFilePath); }
+                catch (IOException) { }
+                throw;
+            }
+        }
+
+        #endregion
+
         #region XML Export
 
         /// <summary>
@@ -241,7 +262,7 @@ namespace IniEdit
                 throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
 
             var xml = ToXml(document, options);
-            File.WriteAllText(filePath, xml, Encoding.UTF8);
+            WriteAllTextAtomic(filePath, xml, Encoding.UTF8);
         }
 
         private static void WriteDocumentAsXml(XmlWriter writer, Document document, XmlExportOptions options)
@@ -265,7 +286,6 @@ namespace IniEdit
 
         private static void WriteSectionAsXml(XmlWriter writer, Section section, string elementName, XmlExportOptions options)
         {
-            var safeElementName = MakeValidXmlName(elementName);
             writer.WriteStartElement(options.SectionElementName);
             writer.WriteAttributeString("name", elementName);
 
@@ -411,7 +431,7 @@ namespace IniEdit
                 throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
 
             var csv = ToCsv(document, options);
-            File.WriteAllText(filePath, csv, options?.Encoding ?? Encoding.UTF8);
+            WriteAllTextAtomic(filePath, csv, options?.Encoding ?? Encoding.UTF8);
         }
 
         private static void WritePropertyAsCsv(StringBuilder sb, string sectionName, Property property, CsvExportOptions options, string delimiterStr)

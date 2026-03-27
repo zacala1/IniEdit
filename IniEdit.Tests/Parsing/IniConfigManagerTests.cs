@@ -479,6 +479,7 @@ key2=""value with \t tab""";
             var loadedContent = File.ReadAllText(newFile);
 
             // Assert - normalize line endings for cross-platform compatibility
+            // Saved files always end with a trailing newline (POSIX standard)
             var expected = @"[Section1]
 key1 = ""simple value"" ; comment1
 key2 = ""value with \""quote\"""" ; comment2
@@ -487,7 +488,8 @@ key3 = unquoted value ; comment3
 [Section2]
 ; Pre-comment
 key1 = ""value with \n newline""
-key2 = ""value with \t tab""";
+key2 = ""value with \t tab""
+";
             Assert.That(loadedContent.Replace("\r\n", "\n"), Is.EqualTo(expected.Replace("\r\n", "\n")));
         }
 
@@ -1543,6 +1545,196 @@ normalKey=normalValue";
                 Assert.That(doc.ParsingErrors[0].Reason, Does.Contain("Line exceeds maximum length"));
                 Assert.That(doc["Section1"]["normalKey"].Value, Is.EqualTo("normalValue"));
             });
+        }
+
+        #endregion
+
+        #region Regression Tests for Bug Fixes
+
+        [Test]
+        public void Save_LastSection_HasTrailingNewline()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.AddSection("Section1");
+            doc["Section1"].AddProperty("key1", "value1");
+
+            // Act
+            IniConfigManager.Save(_tempFilePath, doc);
+            var bytes = File.ReadAllBytes(_tempFilePath);
+
+            // Assert - file must end with newline (\r\n or \n)
+            Assert.That(bytes.Length, Is.GreaterThan(0));
+            Assert.That(bytes[^1], Is.EqualTo((byte)'\n'), "File must end with a newline character");
+        }
+
+        [Test]
+        public void Save_MultipleSection_LastSectionHasTrailingNewline()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.AddSection("Section1");
+            doc["Section1"].AddProperty("key1", "value1");
+            doc.AddSection("Section2");
+            doc["Section2"].AddProperty("key2", "value2");
+
+            // Act
+            IniConfigManager.Save(_tempFilePath, doc);
+            var content = File.ReadAllText(_tempFilePath);
+
+            // Assert - file ends with newline
+            Assert.That(content[^1], Is.EqualTo('\n'), "File must end with a newline character");
+        }
+
+        [Test]
+        public void Save_EmptySection_HasTrailingNewline()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.AddSection("EmptySection");
+
+            // Act
+            IniConfigManager.Save(_tempFilePath, doc);
+            var bytes = File.ReadAllBytes(_tempFilePath);
+
+            // Assert
+            Assert.That(bytes[^1], Is.EqualTo((byte)'\n'), "File with empty section must end with a newline");
+        }
+
+        [Test]
+        public void Load_DuplicateKeyInSameSection_FirstWinPolicy_KeepsFirst()
+        {
+            // Arrange - duplicate key within the same section block (common in real-world INI files)
+            var content = @"[Section]
+key = value1
+key = value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateKeyPolicy = IniConfigOption.DuplicateKeyPolicyType.FirstWin
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc["Section"]["key"].Value, Is.EqualTo("value1"), "FirstWin should keep the first value");
+            Assert.That(doc["Section"].PropertyCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Load_DuplicateKeyInSameSection_LastWinPolicy_KeepsLast()
+        {
+            // Arrange
+            var content = @"[Section]
+key = value1
+key = value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateKeyPolicy = IniConfigOption.DuplicateKeyPolicyType.LastWin
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc["Section"]["key"].Value, Is.EqualTo("value2"), "LastWin should keep the last value");
+            Assert.That(doc["Section"].PropertyCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Load_DuplicateSectionCaseInsensitive_FirstWinPolicy_KeepsFirst()
+        {
+            // Arrange - [Section] and [SECTION] should be treated as duplicates
+            var content = @"[Section]
+key = value1
+[SECTION]
+key2 = value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateSectionPolicy = IniConfigOption.DuplicateSectionPolicyType.FirstWin
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert - case-insensitive deduplication should result in 1 section
+            Assert.That(doc.SectionCount, Is.EqualTo(1), "Case-insensitive duplicate sections should be deduplicated");
+            Assert.That(doc.GetSection("section"), Is.Not.Null);
+        }
+
+        [Test]
+        public async Task LoadAsync_BasicFile_LoadsCorrectly()
+        {
+            // Arrange
+            var content = @"[Section1]
+key1=value1
+key2=value2";
+            File.WriteAllText(_tempFilePath, content);
+
+            // Act
+            var doc = await IniConfigManager.LoadAsync(_tempFilePath);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(doc.SectionCount, Is.EqualTo(1));
+                Assert.That(doc["Section1"]["key1"].Value, Is.EqualTo("value1"));
+                Assert.That(doc["Section1"]["key2"].Value, Is.EqualTo("value2"));
+            });
+        }
+
+        [Test]
+        public async Task SaveAsync_BasicDocument_SavesAndLoadsCorrectly()
+        {
+            // Arrange
+            var doc = new Document();
+            doc.AddSection("Section1");
+            doc["Section1"].AddProperty("key1", "value1");
+            doc["Section1"].AddProperty("key2", "value2");
+
+            // Act
+            await IniConfigManager.SaveAsync(_tempFilePath, doc);
+            var loadedDoc = IniConfigManager.Load(_tempFilePath);
+
+            // Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(loadedDoc.SectionCount, Is.EqualTo(1));
+                Assert.That(loadedDoc["Section1"]["key1"].Value, Is.EqualTo("value1"));
+                Assert.That(loadedDoc["Section1"]["key2"].Value, Is.EqualTo("value2"));
+            });
+        }
+
+        [Test]
+        public async Task LoadAsync_CancellationToken_ThrowsOperationCancelledException()
+        {
+            // Arrange
+            File.WriteAllText(_tempFilePath, "[Section]\nkey=value");
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            // Act & Assert
+            await Assert.ThatAsync(
+                async () => await IniConfigManager.LoadAsync(_tempFilePath, cancellationToken: cts.Token),
+                Throws.InstanceOf<OperationCanceledException>());
+        }
+
+        [Test]
+        public void LoadWithOptions_CustomEncoding_LoadsCorrectly()
+        {
+            // Arrange - write file in UTF-16
+            var content = "[Section]\nkey=한글값";
+            File.WriteAllText(_tempFilePath, content, Encoding.Unicode);
+            var options = new LoadOptions { Encoding = Encoding.Unicode };
+
+            // Act
+            var doc = IniConfigManager.LoadWithOptions(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc["Section"]["key"].Value, Is.EqualTo("한글값"));
         }
 
         #endregion

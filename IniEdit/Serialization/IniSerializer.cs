@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace IniEdit.Serialization
@@ -52,6 +53,12 @@ namespace IniEdit.Serialization
     public static class IniSerializer
     {
         private const int MaxNestingDepth = 1;
+
+        /// <summary>
+        /// Cache for generic MethodInfo to avoid repeated reflection overhead on hot deserialization paths.
+        /// Key: (MethodName, TypeArgument) → MethodInfo
+        /// </summary>
+        private static readonly ConcurrentDictionary<(string, Type), MethodInfo> MethodCache = new();
 
         /// <summary>
         /// Deserializes an INI document to an object of the specified type.
@@ -247,8 +254,8 @@ namespace IniEdit.Serialization
                 if (propType.IsArray)
                 {
                     var elementType = propType.GetElementType()!;
-                    var method = typeof(Property).GetMethod(nameof(Property.GetValueArray))!.MakeGenericMethod(elementType);
-                    // Pass default value for maxElements parameter
+                    var method = MethodCache.GetOrAdd((nameof(Property.GetValueArray), elementType),
+                        key => typeof(Property).GetMethod(key.Item1)!.MakeGenericMethod(key.Item2));
                     var array = method.Invoke(iniProperty, new object[] { Property.DefaultMaxArrayElements });
                     prop.SetValue(obj, array);
                 }
@@ -304,14 +311,16 @@ namespace IniEdit.Serialization
                     }
                     else
                     {
-                        var method = typeof(Property).GetMethod(nameof(Property.GetValue))!.MakeGenericMethod(underlyingType);
+                        var method = MethodCache.GetOrAdd((nameof(Property.GetValue), underlyingType),
+                            key => typeof(Property).GetMethod(key.Item1)!.MakeGenericMethod(key.Item2));
                         var value = method.Invoke(iniProperty, null);
                         prop.SetValue(obj, value);
                     }
                 }
                 else
                 {
-                    var method = typeof(Property).GetMethod(nameof(Property.GetValue))!.MakeGenericMethod(propType);
+                    var method = MethodCache.GetOrAdd((nameof(Property.GetValue), propType),
+                        key => typeof(Property).GetMethod(key.Item1)!.MakeGenericMethod(key.Item2));
                     var value = method.Invoke(iniProperty, null);
                     prop.SetValue(obj, value);
                 }
@@ -397,7 +406,8 @@ namespace IniEdit.Serialization
             {
                 var elementType = propType.GetElementType()!;
                 var iniProp = new Property(keyName);
-                var method = typeof(Property).GetMethod(nameof(Property.SetValueArray))!.MakeGenericMethod(elementType);
+                var method = MethodCache.GetOrAdd((nameof(Property.SetValueArray), elementType),
+                    key => typeof(Property).GetMethod(key.Item1)!.MakeGenericMethod(key.Item2));
                 method.Invoke(iniProp, new[] { value });
                 section.AddProperty(iniProp);
             }
