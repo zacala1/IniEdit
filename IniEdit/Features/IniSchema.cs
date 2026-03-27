@@ -207,7 +207,8 @@ namespace IniEdit
             {
                 try
                 {
-                    if (!System.Text.RegularExpressions.Regex.IsMatch(property.Value, propDef.Pattern))
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(property.Value, propDef.Pattern,
+                        System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(100)))
                     {
                         result.AddError(new SchemaValidationError(
                             SchemaErrorType.PatternMismatch,

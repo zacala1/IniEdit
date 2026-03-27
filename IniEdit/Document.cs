@@ -346,6 +346,31 @@ namespace IniEdit
         }
 
         /// <summary>
+        /// Sets the value of a property in the specified section.
+        /// Creates the section if it doesn't exist, and creates or updates the property.
+        /// </summary>
+        /// <param name="sectionName">The name of the section (case-insensitive).</param>
+        /// <param name="propertyKey">The key of the property.</param>
+        /// <param name="value">The value to set.</param>
+        public void SetValue(string sectionName, string propertyKey, string value)
+        {
+            this[sectionName].SetProperty(propertyKey, value);
+        }
+
+        /// <summary>
+        /// Sets the value of a property in the specified section.
+        /// Creates the section if it doesn't exist, and creates or updates the property.
+        /// </summary>
+        /// <typeparam name="T">The type of the value.</typeparam>
+        /// <param name="sectionName">The name of the section (case-insensitive).</param>
+        /// <param name="propertyKey">The key of the property.</param>
+        /// <param name="value">The value to set.</param>
+        public void SetValue<T>(string sectionName, string propertyKey, T value)
+        {
+            this[sectionName].SetProperty(propertyKey, value);
+        }
+
+        /// <summary>
         /// Removes all sections from the document.
         /// </summary>
         public void Clear()
