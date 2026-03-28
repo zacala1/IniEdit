@@ -13,6 +13,11 @@ namespace IniEdit
         public IniConfigOption? ConfigOption { get; set; }
 
         /// <summary>
+        /// Gets or sets the text encoding to use when reading the file. Defaults to UTF-8.
+        /// </summary>
+        public Encoding Encoding { get; set; } = Encoding.UTF8;
+
+        /// <summary>
         /// Gets or sets the file sharing mode when opening the file.
         /// </summary>
         public FileShare FileShare { get; set; }
@@ -50,9 +55,44 @@ namespace IniEdit
                 throw new ArgumentNullException(nameof(options));
 
             using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, options.FileShare);
-            var document = Load(fileStream, Encoding.UTF8, options.ConfigOption);
+            var document = Load(fileStream, options.Encoding, options.ConfigOption);
 
             // Apply section filter if provided
+            if (options.SectionFilter != null)
+            {
+                var sectionsToRemove = document.GetInternalSections()
+                    .Where(s => !options.SectionFilter(s.Name))
+                    .ToList();
+
+                foreach (var section in sectionsToRemove)
+                {
+                    document.RemoveSection(section.Name);
+                }
+            }
+
+            return document;
+        }
+
+        /// <summary>
+        /// Asynchronously loads an INI document from a file with specified options.
+        /// </summary>
+        /// <param name="filePath">The path to the INI file.</param>
+        /// <param name="options">The load options.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>The loaded document.</returns>
+        /// <exception cref="ArgumentException">Thrown when filePath is null or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when options is null.</exception>
+        /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled.</exception>
+        public static async Task<Document> LoadWithOptionsAsync(string filePath, LoadOptions options, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+
+            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, options.FileShare, BufferSize, useAsync: true);
+            var document = await LoadAsync(fileStream, options.Encoding, options.ConfigOption, cancellationToken).ConfigureAwait(false);
+
             if (options.SectionFilter != null)
             {
                 var sectionsToRemove = document.GetInternalSections()

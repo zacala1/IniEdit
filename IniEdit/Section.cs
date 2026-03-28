@@ -444,9 +444,10 @@ namespace IniEdit
 
         private void MergeFromOnThrowError(Section section)
         {
-            if (section.Any(property => HasProperty(property.Name)))
+            var duplicate = section.FirstOrDefault(property => HasProperty(property.Name));
+            if (duplicate != null)
             {
-                throw new ArgumentException("Section contains one or more properties that already exist");
+                throw new ArgumentException($"Property '{duplicate.Name}' already exists in section '{Name}'");
             }
 
             PreComments.AddRange(section.PreComments);
@@ -496,6 +497,30 @@ namespace IniEdit
         internal List<Property> GetInternalProperties() => _properties;
 
         /// <summary>
+        /// Adds a property without checking for duplicates. Used by IniConfigManager during parsing
+        /// so that duplicate key policies can be applied in bulk after parsing completes.
+        /// </summary>
+        internal void AddPropertyInternal(Property property)
+        {
+            _properties.Add(property);
+            _propertyLookup[property.Name] = property;
+        }
+
+        /// <summary>
+        /// Rebuilds the property lookup dictionary from the current property list.
+        /// Called after bulk deduplication modifies the internal list directly.
+        /// </summary>
+        internal void RebuildPropertyLookup()
+        {
+            _propertyLookup.Clear();
+            foreach (var property in _properties)
+            {
+                if (property != null)
+                    _propertyLookup[property.Name] = property;
+            }
+        }
+
+        /// <summary>
         /// Returns an enumerator that iterates through the properties.
         /// </summary>
         /// <returns>An enumerator for the properties.</returns>
@@ -504,6 +529,7 @@ namespace IniEdit
             return _properties.GetEnumerator();
         }
 
+        /// <inheritdoc />
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();

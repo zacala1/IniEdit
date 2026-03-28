@@ -424,7 +424,7 @@ namespace IniEdit
                         property.Comment = new Comment(comment);
                     }
 
-                    currentSection.AddProperty(property);
+                    currentSection.AddPropertyInternal(property);
                 }
             }
 
@@ -481,7 +481,7 @@ namespace IniEdit
 
         private static void ThrowDuplicateSectionExist(List<Section> sections)
         {
-            HashSet<string> seen = new HashSet<string>();
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var section in sections)
             {
                 if (section == null)
@@ -495,7 +495,7 @@ namespace IniEdit
 
         private static void DeduplicateSectionOnFirstWin(List<Section> sections)
         {
-            HashSet<string> seen = new HashSet<string>();
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             sections.RemoveAll(section => !seen.Add(section.Name));
         }
 
@@ -555,7 +555,7 @@ namespace IniEdit
             {
                 if (section == null)
                     continue;
-                HashSet<string> seen = new HashSet<string>();
+                HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var property in section)
                 {
                     if (property == null)
@@ -578,6 +578,7 @@ namespace IniEdit
                 HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var properties = section.GetInternalProperties();
                 properties.RemoveAll(p => !seen.Add(p.Name));
+                section.RebuildPropertyLookup();
             }
         }
 
@@ -611,6 +612,7 @@ namespace IniEdit
 
                 // Remove trailing items
                 properties.RemoveRange(writeIndex, properties.Count - writeIndex);
+                section.RebuildPropertyLookup();
             }
         }
 
@@ -814,9 +816,10 @@ namespace IniEdit
                     }
                 }
 
+                // Always terminate the last line of the section (provides trailing newline for the last section too)
+                writer.WriteLine();
                 if (indexSection < document.SectionCount - 1)
                 {
-                    writer.WriteLine();
                     for (int i = 0; i < options.BlankLinesBetweenSections; i++)
                     {
                         writer.WriteLine();
