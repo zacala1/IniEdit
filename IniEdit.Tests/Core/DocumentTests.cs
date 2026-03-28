@@ -520,5 +520,81 @@ namespace IniEdit.Tests.Core
         }
 
         #endregion
+
+        #region SetValue Tests
+
+        [Test]
+        public void SetValue_ExistingSection_UpdatesProperty()
+        {
+            // Arrange
+            _document.AddSection("Config");
+            _document["Config"].AddProperty("host", "localhost");
+
+            // Act
+            _document.SetValue("Config", "host", "192.168.1.1");
+
+            // Assert
+            Assert.That(_document["Config"]["host"].Value, Is.EqualTo("192.168.1.1"));
+        }
+
+        [Test]
+        public void SetValue_NewSection_CreatesSection()
+        {
+            // Act
+            _document.SetValue("NewSection", "key", "value");
+
+            // Assert
+            Assert.That(_document.HasSection("NewSection"), Is.True);
+            Assert.That(_document["NewSection"]["key"].Value, Is.EqualTo("value"));
+        }
+
+        [Test]
+        public void SetValue_NewProperty_AddsProperty()
+        {
+            // Arrange
+            _document.AddSection("Config");
+
+            // Act
+            _document.SetValue("Config", "newKey", "newValue");
+
+            // Assert
+            Assert.That(_document["Config"]["newKey"].Value, Is.EqualTo("newValue"));
+        }
+
+        [Test]
+        public void SetValue_Generic_IntValue_StoresAsString()
+        {
+            // Act
+            _document.SetValue<int>("Config", "port", 8080);
+
+            // Assert
+            Assert.That(_document["Config"]["port"].Value, Is.EqualTo("8080"));
+        }
+
+        [Test]
+        public void SetValue_Generic_BoolValue_StoresAsString()
+        {
+            // Act
+            _document.SetValue<bool>("Config", "enabled", true);
+
+            // Assert
+            Assert.That(_document["Config"]["enabled"].Value, Is.EqualTo("True"));
+        }
+
+        [Test]
+        public void SetValue_CaseInsensitiveSectionLookup_UpdatesProperty()
+        {
+            // Arrange
+            _document.AddSection("Config");
+            _document["Config"].AddProperty("key", "original");
+
+            // Act
+            _document.SetValue("config", "key", "updated"); // lowercase lookup
+
+            // Assert
+            Assert.That(_document["Config"]["key"].Value, Is.EqualTo("updated"));
+        }
+
+        #endregion
     }
 }

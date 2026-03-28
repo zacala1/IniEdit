@@ -1737,6 +1737,95 @@ key2=value2";
             Assert.That(doc["Section"]["key"].Value, Is.EqualTo("한글값"));
         }
 
+        [Test]
+        public void Load_DuplicateSection_CaseInsensitive_ThrowErrorPolicy_Throws()
+        {
+            // Arrange - [Section] and [SECTION] are case-insensitive duplicates
+            var content = "[Section]\nkey=value1\n[SECTION]\nkey2=value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateSectionPolicy = IniConfigOption.DuplicateSectionPolicyType.ThrowError
+            };
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() =>
+                IniConfigManager.Load(_tempFilePath, options));
+        }
+
+        [Test]
+        public void Load_DuplicateSection_CaseInsensitive_LastWinPolicy_KeepsLast()
+        {
+            // Arrange - [Section] and [SECTION] should be treated as duplicates
+            var content = "[Section]\nkey=value1\n[SECTION]\nkey=value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateSectionPolicy = IniConfigOption.DuplicateSectionPolicyType.LastWin
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc.SectionCount, Is.EqualTo(1), "Case-insensitive duplicate sections should be deduplicated");
+            Assert.That(doc.GetSection("section")!["key"].Value, Is.EqualTo("value2"));
+        }
+
+        [Test]
+        public void Load_DuplicateKeyInSameSection_CaseInsensitive_ThrowErrorPolicy_Throws()
+        {
+            // Arrange - "Key" and "KEY" in the same section are case-insensitive duplicates
+            var content = "[Section]\nKey=value1\nKEY=value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateKeyPolicy = IniConfigOption.DuplicateKeyPolicyType.ThrowError
+            };
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() =>
+                IniConfigManager.Load(_tempFilePath, options));
+        }
+
+        [Test]
+        public void Load_DuplicateKeyInSameSection_CaseInsensitive_FirstWinPolicy_KeepsFirst()
+        {
+            // Arrange - "Key" and "KEY" should be treated as duplicates (case-insensitive)
+            var content = "[Section]\nKey=value1\nKEY=value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateKeyPolicy = IniConfigOption.DuplicateKeyPolicyType.FirstWin
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc["Section"].PropertyCount, Is.EqualTo(1));
+            Assert.That(doc["Section"]["Key"].Value, Is.EqualTo("value1"));
+        }
+
+        [Test]
+        public void Load_DuplicateKeyInSameSection_CaseInsensitive_LastWinPolicy_KeepsLast()
+        {
+            // Arrange - "Key" and "KEY" should be treated as duplicates (case-insensitive)
+            var content = "[Section]\nKey=value1\nKEY=value2";
+            File.WriteAllText(_tempFilePath, content);
+            var options = new IniConfigOption
+            {
+                DuplicateKeyPolicy = IniConfigOption.DuplicateKeyPolicyType.LastWin
+            };
+
+            // Act
+            var doc = IniConfigManager.Load(_tempFilePath, options);
+
+            // Assert
+            Assert.That(doc["Section"].PropertyCount, Is.EqualTo(1));
+            Assert.That(doc["Section"]["Key"].Value, Is.EqualTo("value2"));
+        }
+
         #endregion
     }
 }

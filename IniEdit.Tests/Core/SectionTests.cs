@@ -527,6 +527,34 @@ namespace IniEdit.Tests.Core
         }
 
         [Test]
+        public void MergeFromOnThrowError_ErrorMessageContainsConflictingKeyName()
+        {
+            // Arrange
+            _section.AddProperty(new Property("conflicting-key", "value1"));
+            var section2 = new Section("Section2");
+            section2.AddProperty(new Property("conflicting-key", "value2"));
+
+            // Act & Assert
+            var ex = Assert.Throws<ArgumentException>(() =>
+                _section.MergeFrom(section2, DuplicateKeyPolicyType.ThrowError));
+            Assert.That(ex!.Message, Does.Contain("conflicting-key"),
+                "Error message should include the conflicting key name for diagnostics");
+        }
+
+        [Test]
+        public void MergeFromOnThrowError_CaseInsensitiveDuplicate_ThrowsArgumentException()
+        {
+            // Arrange - "Key" and "KEY" are case-insensitive duplicates
+            _section.AddProperty(new Property("Key", "value1"));
+            var section2 = new Section("Section2");
+            section2.AddProperty(new Property("KEY", "value2"));
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() =>
+                _section.MergeFrom(section2, DuplicateKeyPolicyType.ThrowError));
+        }
+
+        [Test]
         public void MergeFromOnThrowError_WithoutDuplicates_MergesSuccessfully()
         {
             // Arrange

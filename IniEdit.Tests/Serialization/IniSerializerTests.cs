@@ -61,6 +61,15 @@ namespace IniEdit.Tests.Serialization
             public bool? OptionalEnabled { get; set; }
         }
 
+        public class ConfigWithNullableDefaults
+        {
+            [IniProperty(DefaultValue = 9090)]
+            public int? Port { get; set; }
+
+            [IniProperty(DefaultValue = true)]
+            public bool? Enabled { get; set; }
+        }
+
         public class ConfigWithEnum
         {
             public LogLevel Level { get; set; }
@@ -241,6 +250,59 @@ namespace IniEdit.Tests.Serialization
             // Assert
             Assert.That(config.Name, Is.EqualTo("default-name"));
             Assert.That(config.Port, Is.EqualTo(8080));
+        }
+
+        [Test]
+        public void Deserialize_NullableIntProperty_WithDefaultValue_AppliesDefault()
+        {
+            // Regression test: Convert.ChangeType fails for Nullable<T> without extracting underlying type.
+            // The fix in IniSerializer extracts the underlying type before calling Convert.ChangeType.
+            var doc = new Document();
+            // No properties set — should fall back to DefaultValue
+
+            // Act & Assert: This should NOT throw InvalidCastException
+            var config = IniSerializer.Deserialize<ConfigWithNullableDefaults>(doc);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(config.Port, Is.EqualTo(9090));
+                Assert.That(config.Enabled, Is.EqualTo(true));
+            });
+        }
+
+        [Test]
+        public void Deserialize_NullableProperty_WhenPresentInDocument_OverridesDefault()
+        {
+            // Nullable property with DefaultValue, but doc has an actual value
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Port", "1234");
+            doc.DefaultSection.AddProperty("Enabled", "False");
+
+            var config = IniSerializer.Deserialize<ConfigWithNullableDefaults>(doc);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(config.Port, Is.EqualTo(1234));
+                Assert.That(config.Enabled, Is.EqualTo(false));
+            });
+        }
+
+        [Test]
+        public void GetSerializableProperties_MultipleCalls_ReturnConsistentResults()
+        {
+            // Validates that the SerializablePropertiesCache returns the same results across calls
+            var doc = new Document();
+            doc.DefaultSection.AddProperty("Name", "test");
+            doc.DefaultSection.AddProperty("Port", "8080");
+
+            var config1 = IniSerializer.Deserialize<SimpleConfig>(doc);
+            var config2 = IniSerializer.Deserialize<SimpleConfig>(doc);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(config1.Name, Is.EqualTo(config2.Name));
+                Assert.That(config1.Port, Is.EqualTo(config2.Port));
+            });
         }
 
         [Test]
