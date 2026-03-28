@@ -529,6 +529,7 @@ namespace IniEdit
             return _properties.GetEnumerator();
         }
 
+        /// <inheritdoc />
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();

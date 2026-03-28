@@ -421,6 +421,7 @@ namespace IniEdit
             return _sections.GetEnumerator();
         }
 
+        /// <inheritdoc />
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
