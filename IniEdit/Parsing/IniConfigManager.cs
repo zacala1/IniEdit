@@ -183,8 +183,7 @@ namespace IniEdit
                 throw new ArgumentNullException(nameof(encoding));
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));
-            if (option == null)
-                option = new IniConfigOption();
+            option ??= new IniConfigOption();
 
             var doc = new Document(option);
             using var reader = new StreamReader(stream, encoding, true, BufferSize, leaveOpen: true);
@@ -481,7 +480,7 @@ namespace IniEdit
 
         private static void ThrowDuplicateSectionExist(List<Section> sections)
         {
-            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var section in sections)
             {
                 if (section == null)
@@ -495,7 +494,7 @@ namespace IniEdit
 
         private static void DeduplicateSectionOnFirstWin(List<Section> sections)
         {
-            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             sections.RemoveAll(section => !seen.Add(section.Name));
         }
 
@@ -555,7 +554,7 @@ namespace IniEdit
             {
                 if (section == null)
                     continue;
-                HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var property in section)
                 {
                     if (property == null)
@@ -575,7 +574,7 @@ namespace IniEdit
                 if (section == null)
                     continue;
 
-                HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var properties = section.GetInternalProperties();
                 properties.RemoveAll(p => !seen.Add(p.Name));
                 section.RebuildPropertyLookup();

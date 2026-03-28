@@ -36,7 +36,7 @@ namespace IniEdit
         /// <exception cref="ArgumentException">Thrown when the value is not in <see cref="CommentPrefixChars"/>.</exception>
         public char DefaultCommentPrefixChar
         {
-            get { return _defaultCommentPrefixChar; }
+            get => _defaultCommentPrefixChar;
             set
             {
                 if (Array.IndexOf(CommentPrefixChars, value) < 0)

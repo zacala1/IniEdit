@@ -1,4 +1,4 @@
-namespace IniEdit.Extensions
+namespace IniEdit
 {
     /// <summary>
     /// Provides extension methods for creating and restoring document snapshots.

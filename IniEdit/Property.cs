@@ -23,11 +23,8 @@ namespace IniEdit
         /// </summary>
         public string Value
         {
-            get { return _value; }
-            set
-            {
-                SetStringValue(value);
-            }
+            get => _value;
+            set => SetStringValue(value);
         }
 
         /// <summary>

@@ -1,4 +1,3 @@
-using IniEdit.Extensions;
 using NUnit.Framework;
 using Assert = NUnit.Framework.Legacy.ClassicAssert;
 
