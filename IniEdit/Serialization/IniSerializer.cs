@@ -240,7 +240,8 @@ namespace IniEdit.Serialization
                 // Try to use default value from attribute
                 if (propAttr?.DefaultValue != null)
                 {
-                    prop.SetValue(obj, Convert.ChangeType(propAttr.DefaultValue, prop.PropertyType));
+                    var targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                    prop.SetValue(obj, Convert.ChangeType(propAttr.DefaultValue, targetType));
                 }
                 return;
             }
@@ -417,10 +418,14 @@ namespace IniEdit.Serialization
             }
         }
 
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> SerializablePropertiesCache = new();
+
         private static IEnumerable<PropertyInfo> GetSerializableProperties(Type type)
         {
-            return type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.GetCustomAttribute<IniIgnoreAttribute>() == null);
+            return SerializablePropertiesCache.GetOrAdd(type, t =>
+                t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.GetCustomAttribute<IniIgnoreAttribute>() == null)
+                    .ToArray());
         }
 
         private static Type GetUnderlyingType(Type type)

@@ -90,7 +90,7 @@ namespace IniEdit
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
-            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, options.FileShare, 4096, useAsync: true);
+            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, options.FileShare, BufferSize, useAsync: true);
             var document = await LoadAsync(fileStream, options.Encoding, options.ConfigOption, cancellationToken).ConfigureAwait(false);
 
             if (options.SectionFilter != null)
