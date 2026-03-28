@@ -554,20 +554,19 @@ key3=""value with ; not a comment"" ; actual comment
         [Test]
         public void Save_DoesNotMutateIsQuoted_WhenValueNeedsQuoting()
         {
-            // Arrange - 특수 문자가 있어도 IsQuoted=false로 설정
+            // Arrange - IsQuoted=false even though value contains special characters
             var doc = new Document();
             var section = new Section("Section1");
             var prop = new Property("key1", "value with ; semicolon") { IsQuoted = false };
             section.AddProperty(prop);
             doc.AddSection(section);
 
-            // Act - Save 호출
+            // Act
             IniConfigManager.Save(_tempFilePath, doc);
 
-            // Assert - IsQuoted가 변경되지 않아야 함
+            // Assert - Save must not mutate IsQuoted; file output should still be auto-quoted
             Assert.That(prop.IsQuoted, Is.False, "Save should not mutate IsQuoted property");
 
-            // 파일에는 자동으로 따옴표로 감싸져야 함
             var content = File.ReadAllText(_tempFilePath);
             Assert.That(content, Does.Contain("\"value with \\; semicolon\""));
         }
@@ -1199,7 +1198,7 @@ key=value";
         [Test]
         public void Load_WithMaxParsingErrors_LimitsErrorCollection()
         {
-            // Arrange - 10개의 오류가 있는 파일
+            // Arrange - file with ~10 parse errors
             var content = @"
 [Section
 key1
@@ -1231,7 +1230,7 @@ key6";
         [Test]
         public void Load_WithMaxParsingErrors_Zero_CollectsUnlimitedErrors()
         {
-            // Arrange - 5개의 오류가 있는 파일
+            // Arrange - file with 5 parse errors
             var content = @"
 [Section
 key1
@@ -1312,7 +1311,7 @@ key3";
         [Test]
         public void Load_WithMaxSections_LimitsSectionCount()
         {
-            // Arrange - 5개 섹션이 있지만 3개만 허용
+            // Arrange - 5 sections in file, limit set to 3
             var content = @"
 [Section1]
 key1=value1
@@ -1346,7 +1345,7 @@ key5=value5";
         [Test]
         public void Load_WithMaxPropertiesPerSection_LimitsPropertyCount()
         {
-            // Arrange - 5개 속성이 있지만 3개만 허용
+            // Arrange - 5 properties in section, limit set to 3
             var content = @"
 [Section1]
 key1=value1
